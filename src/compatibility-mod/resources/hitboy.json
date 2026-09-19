@@ -1,0 +1,10 @@
+{
+  "id": "hitboy-mixed-compatibility",
+  "name": "HitBoy Mixed Compatibility",
+  "version": "1.0.0",
+  "type": "client",
+  "mainClass": "com.hitboy.loader.compat.mod.MixedCompatibilityMod",
+  "dependsOn": [
+    "hitboys-mod-loader-api"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "meteor-client",
+  "name": "Meteor Client - HitBoy's Mod Loader Edition",
+  "version": "1.21.11-86",
+  "mainClass": "meteordevelopment.meteorclient.MeteorClient",
+  "environment": "client",
+  "authors": ["MineGame159", "squidoodly", "seasnail"],
+  "mixins": ["meteor-client.mixins.json"]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "hitboys-mod-loader-api",
+  "name": "HitBoy Mod Loader API",
+  "version": "1.0.0",
+  "type": "universal",
+  "libraryOnly": true
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Flat, solid-color monogram: a plain geometric "H". No gradients, no bevels. -->
+  <rect width="512" height="512" rx="96" fill="#12161f"/>
+  <g fill="#4c8dff">
+    <rect x="144" y="120" width="64" height="272"/>
+    <rect x="304" y="120" width="64" height="272"/>
+    <rect x="144" y="224" width="224" height="64"/>
+  </g>
+</svg>

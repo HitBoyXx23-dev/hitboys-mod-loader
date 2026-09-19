@@ -1,0 +1,40 @@
+/*    */ package meteordevelopment.meteorclient.asm;
+/*    */ 
+/*    */ import net.fabricmc.loader.api.FabricLoader;
+/*    */ import net.fabricmc.loader.api.MappingResolver;
+/*    */ import org.objectweb.asm.tree.FieldInsnNode;
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ public class FieldInfo
+/*    */ {
+/*    */   private String owner;
+/*    */   private String name;
+/*    */   private String descriptor;
+/*    */   
+/*    */   public FieldInfo(String owner, String name, Descriptor descriptor, boolean map) {
+/* 16 */     if (map) {
+/* 17 */       MappingResolver mappings = FabricLoader.getInstance().getMappingResolver();
+/* 18 */       String ownerDot = owner.replace('/', '.');
+/*    */       
+/* 20 */       if (owner != null) this.owner = mappings.mapClassName("intermediary", ownerDot).replace('.', '/'); 
+/* 21 */       if (name != null && descriptor != null) this.name = mappings.mapFieldName("intermediary", ownerDot, name, descriptor.toString(false, false));
+/*    */     
+/*    */     } else {
+/* 24 */       this.owner = owner;
+/* 25 */       this.name = name;
+/*    */     } 
+/*    */     
+/* 28 */     if (descriptor != null) this.descriptor = descriptor.toString(false, map); 
+/*    */   }
+/*    */   
+/*    */   public boolean equals(FieldInsnNode insn) {
+/* 32 */     return ((this.owner == null || insn.owner.equals(this.owner)) && (this.name == null || insn.name.equals(this.name)) && (this.descriptor == null || insn.desc.equals(this.descriptor)));
+/*    */   }
+/*    */ }
+
+
+/* Location:              C:\Users\hitbo\Downloads\jd-gui-windows-1.6.6\jd-gui-windows-1.6.6\meteor-client-1.21.11-86.jar!\meteordevelopment\meteorclient\asm\FieldInfo.class
+ * Java compiler version: 21 (65.0)
+ * JD-Core Version:       1.1.3
+ */

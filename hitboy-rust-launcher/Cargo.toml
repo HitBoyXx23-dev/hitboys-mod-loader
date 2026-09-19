@@ -1,0 +1,26 @@
+[package]
+name = "hitboys-mod-loader"
+version = "1.0.0"
+edition = "2021"
+description = "HitBoy's Mod Loader - native Minecraft launcher and mod loader"
+authors = ["HitBoy"]
+
+[dependencies]
+eframe = "0.27"
+egui = "0.27"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+dirs = "5"
+anyhow = "1.0"
+zip = "2"
+rfd = "0.14"
+
+[build-dependencies]
+winres = "0.1"
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true

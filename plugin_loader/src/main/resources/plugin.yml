@@ -1,0 +1,13 @@
+name: HitBoysPluginLoader
+main: com.hitboy.pluginloader.HitBoysPluginLoader
+version: 1.0.0
+api-version: '1.20'
+author: HitBoy
+description: >
+  Loads a second, custom plugin ecosystem (plugin.json + HitBoyPlugin API)
+  on top of this Spigot/Paper/Purpur server.
+commands:
+  hitboyplugins:
+    description: Lists or reloads HitBoy plugins.
+    usage: /<command> [reload]
+    aliases: [hbp]
