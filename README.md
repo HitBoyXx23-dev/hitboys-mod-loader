@@ -11,6 +11,16 @@ Original HitBoy code may be viewed, downloaded, compiled, installed, and used fo
 - [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe)
 - [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe)
 - [HitBoy Mod Loader API](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader-api.jar)
+- [HitBoy Plugin Loader for Servers](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-plugin-loader.jar)
+
+## Client and server products
+
+| Product | Runs on | Install location |
+|---|---|---|
+| HitBoy's Mod Loader | Minecraft client | Run `hitboys-mod-loader.exe` or install the HitBoy official Launcher profile. |
+| HitBoy's Plugin Loader | Paper, Spigot, or Purpur server | Put `hitboys-plugin-loader.jar` in the server's `plugins` folder. |
+
+The client mod loader and server plugin loader are separate. Players use the client launcher; server owners install the server JAR. A server does not need the client EXE, and the client does not load server plugins.
 
 HitBoy's Mod Loader is a client-side native Java mod loader for Minecraft
 1.21.11. It starts Minecraft with a dedicated patch JAR, loads native mod JARs
@@ -20,7 +30,7 @@ from `native_mods`, and provides a small stable API in `com.hitboy.loader`.
 
 | Path | Use | Account support |
 |---|---|---|
-| `dist\HitBoysModLoader.exe` | Standalone HitBoy launcher, with its own game directory. | Offline username only. |
+| `dist\hitboys-mod-loader.exe` | Standalone HitBoy launcher, with its own game directory. | Offline username or Microsoft sign-in through the official Launcher button. |
 | `1.21.11-HitBoy` official profile | Patches the official Minecraft Launcher launch at process start. | Uses the signed-in Microsoft account from the official Launcher. |
 
 The official profile is the appropriate route for legitimate online play. It
@@ -105,3 +115,11 @@ and hosts its own `plugin.json`-based plugins through a small, stable
 `plugin_loader/README.md` for the full contract, an example plugin, and its
 current roadmap/limitations. This is a first-phase seed toward
 Spigot/Paper/Purpur-style parity, not a complete implementation.
+
+Server installation:
+
+1. Download `hitboys-plugin-loader.jar`.
+2. Put it in the Paper, Spigot, or Purpur server's `plugins` folder.
+3. Start the server once.
+4. Put HitBoy server plugins in `plugins/HitBoysPluginLoader/plugins/`.
+5. Use `/hitboyplugins` or `/hbp` to list loaded HitBoy plugins.
