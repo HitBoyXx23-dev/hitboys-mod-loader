@@ -33,8 +33,10 @@ public final class PluginDescriptor {
     }
 
     public boolean isValid() {
-        return name != null && !name.isBlank()
-            && version != null && !version.isBlank()
-            && main != null && !main.isBlank();
+        return hasText(name) && hasText(version) && hasText(main);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

@@ -13,6 +13,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -135,10 +136,30 @@ public final class PluginManager {
     }
 
     public List<LoadedPlugin> loadedPlugins() {
-        return List.copyOf(loadedPlugins);
+        return Collections.unmodifiableList(new ArrayList<>(loadedPlugins));
     }
 
-    /** A plugin that has been loaded and enabled, tracked so it can be disabled cleanly. */
-    public record LoadedPlugin(PluginDescriptor descriptor, HitBoyPlugin instance, URLClassLoader classLoader) {
+    public static final class LoadedPlugin {
+        private final PluginDescriptor descriptor;
+        private final HitBoyPlugin instance;
+        private final URLClassLoader classLoader;
+
+        public LoadedPlugin(PluginDescriptor descriptor, HitBoyPlugin instance, URLClassLoader classLoader) {
+            this.descriptor = descriptor;
+            this.instance = instance;
+            this.classLoader = classLoader;
+        }
+
+        public PluginDescriptor descriptor() {
+            return descriptor;
+        }
+
+        public HitBoyPlugin instance() {
+            return instance;
+        }
+
+        public URLClassLoader classLoader() {
+            return classLoader;
+        }
     }
 }

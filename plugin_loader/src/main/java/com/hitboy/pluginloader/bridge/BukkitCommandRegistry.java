@@ -10,6 +10,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -51,7 +52,7 @@ public final class BukkitCommandRegistry implements CommandRegistry {
             logger.warning("Cannot register command /" + name + " -- CommandMap unavailable.");
             return;
         }
-        Command command = new Command(name, description, "/" + name, List.of()) {
+        Command command = new Command(name, description, "/" + name, Collections.<String>emptyList()) {
             @Override
             public boolean execute(CommandSender sender, String label, String[] args) {
                 try {

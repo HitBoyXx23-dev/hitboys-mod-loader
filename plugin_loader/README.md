@@ -95,7 +95,7 @@ Output: `plugin_loader/target/HitBoysPluginLoader.jar` and
 
 ## Compatibility
 
-Compiled against the publicly-hosted PaperMC 1.20.1 API (Paper's API is a
+Compiled to Java 8 bytecode against the publicly-hosted PaperMC 1.20.1 API (Paper's API is a
 strict superset of Spigot/Bukkit's), but the event and command hooks used
 here (`PlayerJoinEvent`, `PlayerQuitEvent`, `AsyncPlayerChatEvent`,
 `BlockBreakEvent`, `Server#commandMap`) have existed with the same
@@ -103,7 +103,8 @@ signatures since Bukkit 1.8, so a build of this jar is expected to load on
 Spigot/Paper/Purpur servers across that whole range. It has not been
 tested against a live server in this environment (no server process
 available here) -- validate on your own server before relying on it in
-production.
+production. The loader intentionally omits Bukkit's `api-version` declaration
+so legacy servers such as 1.8.9 do not reject it before startup.
 
 ## Known limitations (roadmap)
 

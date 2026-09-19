@@ -22,6 +22,8 @@ Original HitBoy code may be viewed, downloaded, compiled, installed, and used fo
 
 The client mod loader and server plugin loader are separate. Players use the client launcher; server owners install the server JAR. A server does not need the client EXE, and the client does not load server plugins.
 
+The server plugin loader is compiled as Java 8 bytecode and does not declare a modern-only Bukkit API version. Its bridge uses Bukkit events and command APIs available from 1.8.9 through current Paper, Spigot, and Purpur releases. HitBoy server plugins still need to avoid newer Java or Bukkit-only features when targeting legacy servers.
+
 HitBoy's Mod Loader is a client-side native Java mod loader for Minecraft
 1.21.11. It starts Minecraft with a dedicated patch JAR, loads native mod JARs
 from `native_mods`, and provides a small stable API in `com.hitboy.loader`.

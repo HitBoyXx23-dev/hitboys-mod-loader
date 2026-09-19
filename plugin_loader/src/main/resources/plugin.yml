@@ -1,7 +1,6 @@
 name: HitBoysPluginLoader
 main: com.hitboy.pluginloader.HitBoysPluginLoader
 version: 1.0.0
-api-version: '1.20'
 author: HitBoy
 description: >
   Loads a second, custom plugin ecosystem (plugin.json + HitBoyPlugin API)
