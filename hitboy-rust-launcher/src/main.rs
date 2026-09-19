@@ -131,6 +131,32 @@ fn official_patch_command(java: &Path, launcher_jar: &Path) -> Command {
     command
 }
 
+fn open_java_launcher() -> Result<String, String> {
+    let mut candidates = Vec::new();
+    if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+        candidates.push(PathBuf::from(program_files_x86).join("Minecraft Launcher").join("MinecraftLauncher.exe"));
+    }
+    if let Some(program_files) = std::env::var_os("ProgramFiles") {
+        candidates.push(PathBuf::from(program_files).join("Minecraft Launcher").join("MinecraftLauncher.exe"));
+    }
+    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+        candidates.push(PathBuf::from(local_app_data).join("Programs").join("Minecraft Launcher").join("MinecraftLauncher.exe"));
+    }
+    for candidate in candidates {
+        if candidate.is_file() {
+            Command::new(&candidate)
+                .spawn()
+                .map_err(|error| format!("Could not open {}: {}", candidate.display(), error))?;
+            return Ok("Opened the official Minecraft Launcher. Select Java Edition and the HitBoy profile.".to_string());
+        }
+    }
+    Command::new("explorer.exe")
+        .arg("https://www.minecraft.net/download")
+        .spawn()
+        .map_err(|error| format!("Could not open the official Minecraft download page: {}", error))?;
+    Ok("The Java-capable official Minecraft Launcher was not found. Opened Mojang's official download page instead; install it, sign in, and then use this button again.".to_string())
+}
+
 impl HitBoysModLoaderApp {
     fn new() -> Self {
         let mixed_compatibility = mixed_compatibility_mode();
@@ -320,9 +346,9 @@ impl eframe::App for HitBoysModLoaderApp {
                             ui.label("Username (offline):");
                             ui.text_edit_singleline(&mut self.username);
                             if ui.button("Microsoft Login / Online Play").clicked() {
-                                match Command::new("explorer.exe").arg("minecraft://").spawn() {
-                                    Ok(_) => self.log += "Opened the official Minecraft Launcher. Sign in with Microsoft, install the HitBoy online profile from Settings if needed, then select the HitBoy profile.\n",
-                                    Err(error) => self.log += &format!("Could not open the official Minecraft Launcher: {}\n", error),
+                                match open_java_launcher() {
+                                    Ok(message) => self.log += &format!("{}\n", message),
+                                    Err(error) => self.log += &format!("{}\n", error),
                                 }
                             }
                             ui.label(egui::RichText::new("Online authentication is handled securely by the official Minecraft Launcher.").small().color(egui::Color32::GRAY));
