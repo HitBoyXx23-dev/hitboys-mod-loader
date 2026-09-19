@@ -2,7 +2,15 @@
 
 ## License
 
-Original HitBoy code is source-visible under the restrictive terms in `LICENSE`. Viewing is allowed, but use, copying, modification, compilation, and redistribution are not permitted without written permission. Third-party and Meteor Client-derived files remain under their existing licenses, including the GNU GPL v3 where applicable.
+Original HitBoy code may be viewed, downloaded, compiled, installed, and used for personal, non-commercial purposes under `LICENSE`. Modification, redistribution, sublicensing, sale, and commercial use require written permission. Third-party and Meteor Client-derived files remain under their existing licenses, including the GNU GPL v3 where applicable.
+
+## Downloads
+
+- [HitBoy Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader.exe)
+- [HitBoy Mixed Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-mixed-mod-compatibility.exe)
+- [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe)
+- [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe)
+- [HitBoy Mod Loader API](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader-api.jar)
 
 HitBoy's Mod Loader is a client-side native Java mod loader for Minecraft
 1.21.11. It starts Minecraft with a dedicated patch JAR, loads native mod JARs
