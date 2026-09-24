@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GameAgentTitleTest {
     @Test
-    void replacesRealmsWithoutChangingMultiplayerOrLoadingGameClasses() throws Exception {
+    void keepsRealmsAndBrandsTitleWithoutLoadingGameClasses() throws Exception {
         ClassNode title = new ClassNode();
         title.version = Opcodes.V17;
         title.access = Opcodes.ACC_PUBLIC;
@@ -44,12 +44,12 @@ class GameAgentTitleTest {
         new ClassReader(output).accept(result, 0);
         MethodNode realms = result.methods.stream().filter(m -> m.name.equals("b")).findFirst().orElseThrow();
         MethodNode multiplayer = result.methods.stream().filter(m -> m.name.equals("c")).findFirst().orElseThrow();
-        assertTrue(java.util.Arrays.stream(realms.instructions.toArray()).anyMatch(i ->
-            i instanceof MethodInsnNode && ((MethodInsnNode) i).name.equals("openModsScreen")));
+        // Realms is kept; the Mods button is added beside it at runtime instead.
+        assertEquals(Opcodes.RETURN, realms.instructions.getFirst().getOpcode());
         assertEquals(Opcodes.RETURN, multiplayer.instructions.getFirst().getOpcode());
         MethodNode updatedLabels = result.methods.stream().filter(m -> m.name.equals("labels")).findFirst().orElseThrow();
         assertTrue(java.util.Arrays.stream(updatedLabels.instructions.toArray()).anyMatch(i ->
-            i instanceof LdcInsnNode && "Mods".equals(((LdcInsnNode) i).cst)));
+            i instanceof LdcInsnNode && "menu.online".equals(((LdcInsnNode) i).cst)));
         assertTrue(java.util.Arrays.stream(updatedLabels.instructions.toArray()).anyMatch(i ->
             i instanceof LdcInsnNode && "/HitBoy's Mod Loader".equals(((LdcInsnNode) i).cst)));
     }

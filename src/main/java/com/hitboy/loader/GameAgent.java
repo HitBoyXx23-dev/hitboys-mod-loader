@@ -533,7 +533,7 @@ public class GameAgent {
                 }
             }
             boolean replacedBranding = replaceTitleBranding(cn);
-            boolean replacedRealms = replaceRealmsButton(cn);
+            boolean replacedRealms = false; // Realms stays; the Mods button is added beside it
             for (MethodNode mn : cn.methods) {
                 if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
                 if (mn.name.equals("bg_") && mn.desc.equals("()V")) {

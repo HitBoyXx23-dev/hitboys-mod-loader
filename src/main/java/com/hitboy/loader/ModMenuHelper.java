@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 public final class ModMenuHelper {
-    private static final Set<Object> INJECTED_SCREENS = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final java.util.Map<Object, Object> INJECTED_BUTTONS = new WeakHashMap<>();
 
     private ModMenuHelper() {
     }
@@ -18,11 +18,10 @@ public final class ModMenuHelper {
     }
 
     public static void injectModsButton(Object titleScreen) {
-        if ("gsd".equals(titleScreen.getClass().getName())) {
-            return;
-        }
-        synchronized (INJECTED_SCREENS) {
-            if (!INJECTED_SCREENS.add(titleScreen)) {
+        // Re-add after the title screen rebuilds its widgets (for example on window resize).
+        synchronized (INJECTED_BUTTONS) {
+            Object existing = INJECTED_BUTTONS.get(titleScreen);
+            if (existing != null && childrenOf(titleScreen).contains(existing)) {
                 return;
             }
         }
@@ -33,6 +32,54 @@ public final class ModMenuHelper {
             return;
         }
         System.err.println("HitBoy's Mod Loader could not add the Mods button: no supported Minecraft GUI API was found.");
+    }
+
+    private static void remember(Object titleScreen, Object button) {
+        synchronized (INJECTED_BUTTONS) {
+            INJECTED_BUTTONS.put(titleScreen, button);
+        }
+    }
+
+    /** The screen's widget list (Screen#children), or an empty list. */
+    private static java.util.List<?> childrenOf(Object screen) {
+        // Read the field from Minecraft's base Screen class only; subclasses reuse short obfuscated names.
+        for (Class<?> type = screen.getClass(); type != null; type = type.getSuperclass()) {
+            String field = "net.minecraft.client.gui.screens.Screen".equals(type.getName()) ? "children"
+                : "gsb".equals(type.getName()) ? "d" : null;
+            if (field == null) continue;
+            try {
+                Field children = type.getDeclaredField(field);
+                children.setAccessible(true);
+                Object value = children.get(screen);
+                if (value instanceof java.util.List) return (java.util.List<?>) value;
+            } catch (ReflectiveOperationException ignored) {
+                // fall through
+            }
+        }
+        return java.util.Collections.emptyList();
+    }
+
+    /**
+     * Keeps the Realms button: finds the full-width button in the Realms row, shrinks it to the left
+     * half, and returns bounds for the right half (x, y, width). Without a Realms button the Mods
+     * button takes the whole row.
+     */
+    private static int[] boundsBesideRealms(Object screen, int width, int height,
+        String getX, String getY, String getWidth, String setWidth) {
+        int x = width / 2 - 100;
+        int y = height / 4 + 96;
+        for (Object widget : childrenOf(screen)) {
+            try {
+                Class<?> type = widget.getClass();
+                if ((int) type.getMethod(getX).invoke(widget) != x || (int) type.getMethod(getY).invoke(widget) != y
+                    || (int) type.getMethod(getWidth).invoke(widget) != 200) continue;
+                type.getMethod(setWidth, int.class).invoke(widget, 98);
+                return new int[] {x + 102, y, 98};
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // not a button with these accessors
+            }
+        }
+        return new int[] {x, y, 200};
     }
 
     private static boolean tryInjectObfuscated12111Button(Object titleScreen, String label) {
@@ -55,15 +102,17 @@ public final class ModMenuHelper {
             Object builder = buttonClass.getMethod("a", componentClass, onPressClass).invoke(null, component, onPress);
             int width = getIntField(titleScreen, "o");
             int height = getIntField(titleScreen, "p");
+            int[] bounds = boundsBesideRealms(titleScreen, width, height, "aT_", "aU_", "aS_", "c");
             builder = builder.getClass()
                 .getMethod("a", int.class, int.class, int.class, int.class)
-                .invoke(builder, width / 2 - 100, height / 4 + 96, 200, 20);
+                .invoke(builder, bounds[0], bounds[1], bounds[2], 20);
             Object button = builder.getClass().getMethod("a").invoke(builder);
             Method add = findCompatibleMethod(titleScreen.getClass(), "c", button.getClass());
             if (add == null) {
                 return false;
             }
             add.invoke(titleScreen, button);
+            remember(titleScreen, button);
             System.out.println("Injected 1.21.11 " + label + " button.");
             return true;
         } catch (ReflectiveOperationException e) {
@@ -91,15 +140,17 @@ public final class ModMenuHelper {
             Object builder = buttonClass.getMethod("builder", componentClass, onPressClass).invoke(null, component, onPress);
             int width = getIntField(titleScreen, "width", "field_22789", "g");
             int height = getIntField(titleScreen, "height", "field_22790", "h");
+            int[] bounds = boundsBesideRealms(titleScreen, width, height, "getX", "getY", "getWidth", "setWidth");
             builder = builder.getClass()
                 .getMethod("bounds", int.class, int.class, int.class, int.class)
-                .invoke(builder, width / 2 - 100, height / 4 + 96, 200, 20);
+                .invoke(builder, bounds[0], bounds[1], bounds[2], 20);
             Object button = builder.getClass().getMethod("build").invoke(builder);
             Method add = findMethod(titleScreen.getClass(), "addRenderableWidget", "method_25429", "addWidget");
             if (add == null) {
                 return false;
             }
             add.invoke(titleScreen, button);
+            remember(titleScreen, button);
             System.out.println("Injected native " + label + " button.");
             return true;
         } catch (ReflectiveOperationException e) {
