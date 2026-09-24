@@ -40,11 +40,17 @@ public class NativeLoader {
         }
         if (!md.exists()) md.mkdirs();
         System.out.println("Scanning mods: " + modsDir + " exists=" + md.exists());
-        new InstanceVerifier().requireCompatibleHitBoyMods(md.toPath());
-        GameAgent.appendHitBoyModsToClasspath(md.toPath());
-        OptionalAccessWidenerRuntime.initialize(md.toPath());
-        OptionalMixinRuntime.initialize(md.toPath());
-        modManager.scanAndLoadMods(modsDir);
+        try {
+            new InstanceVerifier().requireCompatibleHitBoyMods(md.toPath());
+            GameAgent.appendHitBoyModsToClasspath(md.toPath());
+            OptionalAccessWidenerRuntime.initialize(md.toPath());
+            OptionalMixinRuntime.initialize(md.toPath());
+            modManager.scanAndLoadMods(modsDir);
+        } catch (Throwable failure) {
+            // Mod problems must never stop Minecraft from opening; report them and start without the failed mods.
+            System.err.println("HitBoy could not load mods from " + modsDir + ": " + failure);
+            failure.printStackTrace();
+        }
         String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
         String gameDir = gameDirectory;
         System.out.println("Loader initialized with " + modManager.getLoadedModCount() + " mods for " + gameVersion);

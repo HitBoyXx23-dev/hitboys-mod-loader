@@ -122,7 +122,7 @@ public final class OptionalMixinRuntime {
         if (!Files.isDirectory(modsDirectory)) return configurations;
         try (DirectoryStream<Path> jars = Files.newDirectoryStream(modsDirectory, "*.jar")) {
             List<Path> paths = new ArrayList<>();
-            for (Path path : jars) paths.add(path);
+            for (Path path : jars) if (!ActiveMods.isSkipped(path)) paths.add(path);
             paths.sort(Comparator.comparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER));
             for (Path path : paths) readConfigurations(path, configurations);
         } catch (IOException exception) {

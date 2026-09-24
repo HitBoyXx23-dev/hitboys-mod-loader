@@ -28,7 +28,7 @@ public class GameAgent {
         try (java.nio.file.DirectoryStream<Path> jars = Files.newDirectoryStream(modsDirectory, "*.jar")) {
             for (Path jar : jars) {
                 String stem = jar.getFileName().toString().replaceFirst("\\.jar$", "");
-                if (Files.exists(modsDirectory.resolve(stem + ".disabled"))) continue;
+                if (ActiveMods.isSkipped(jar)) continue;
                 if (classPath.contains(jar.toAbsolutePath().toString())) continue;
                 JarFile file = new JarFile(jar.toFile());
                 if (file.getJarEntry("hitboy.json") == null) {

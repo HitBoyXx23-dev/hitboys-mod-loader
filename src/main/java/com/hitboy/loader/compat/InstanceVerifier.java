@@ -20,7 +20,7 @@ public final class InstanceVerifier {
         if (!Files.isDirectory(modsDirectory)) return new Result(inspections, aggregate);
         List<Path> jars = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(modsDirectory, "*.jar")) {
-            for (Path path : stream) jars.add(path);
+            for (Path path : stream) if (!com.hitboy.loader.ActiveMods.isSkipped(path)) jars.add(path);
         }
         jars.sort(Comparator.comparing(path -> path.getFileName().toString(), String.CASE_INSENSITIVE_ORDER));
         Map<String, HitBoyModDescriptor> ids = new HashMap<>();

@@ -32,7 +32,7 @@ public final class OptionalAccessWidenerRuntime {
         LazyRemapper remapper = new LazyRemapper(System.getProperty("hitboy.game-version", "1.21.11"));
         AccessRules rules = new AccessRules();
         try (var paths = Files.list(modsDirectory)) {
-            for (Path path : paths.filter(value -> value.toString().endsWith(".jar")).toList()) readJar(path, remapper, rules);
+            for (Path path : paths.filter(value -> value.toString().endsWith(".jar") && !ActiveMods.isSkipped(value)).toList()) readJar(path, remapper, rules);
         } catch (Exception exception) {
             throw new IllegalStateException("Could not load mod access wideners", exception);
         }

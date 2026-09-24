@@ -32,6 +32,7 @@ public class ModManager {
         List<Path> jarFiles = new ArrayList<>();
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(modsDir, "*.jar")) {
             for (Path jar : stream) {
+                if (ActiveMods.isSkipped(jar)) continue;
                 jarFiles.add(jar);
             }
         }
@@ -39,9 +40,13 @@ public class ModManager {
 
         List<ModInfo> modInfos = new ArrayList<>();
         for (Path jar : jarFiles) {
-            ModInfo info = readModMetadata(jar);
-            if (info != null) {
-                modInfos.add(info);
+            try {
+                ModInfo info = readModMetadata(jar);
+                if (info != null) {
+                    modInfos.add(info);
+                }
+            } catch (IOException | RuntimeException invalid) {
+                System.err.println("Skipping " + jar.getFileName() + ": " + invalid.getMessage());
             }
         }
 
@@ -150,23 +155,19 @@ public class ModManager {
 
     private Map<String, ModInfo> indexMods(List<ModInfo> mods) {
         Map<String, ModInfo> byName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        for (ModInfo mod : mods) {
-            ModInfo existing = byName.putIfAbsent(mod.name, mod);
+        // Skip later duplicates instead of stopping the game: old installs can leave two copies of a mod.
+        for (java.util.Iterator<ModInfo> iterator = mods.iterator(); iterator.hasNext(); ) {
+            ModInfo mod = iterator.next();
+            ModInfo existing = byName.get(mod.name);
+            if (existing == null && !mod.id.equalsIgnoreCase(mod.name)) existing = byName.get(mod.id);
             if (existing != null) {
-                throw new IllegalArgumentException(
-                    "Duplicate mod name \"" + mod.name + "\" in "
-                        + existing.jarName + " and " + mod.jarName
-                );
+                System.err.println("Skipping " + mod.jarName + ": it is the same mod as " + existing.jarName
+                    + " (\"" + mod.name + "\"). Delete one of them.");
+                iterator.remove();
+                continue;
             }
-            if (!mod.id.equalsIgnoreCase(mod.name)) {
-                existing = byName.putIfAbsent(mod.id, mod);
-                if (existing != null && existing != mod) {
-                    throw new IllegalArgumentException(
-                        "Duplicate mod id \"" + mod.id + "\" in "
-                            + existing.jarName + " and " + mod.jarName
-                    );
-                }
-            }
+            byName.put(mod.name, mod);
+            if (!mod.id.equalsIgnoreCase(mod.name)) byName.put(mod.id, mod);
         }
         return byName;
     }
