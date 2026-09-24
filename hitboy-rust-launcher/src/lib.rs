@@ -23,59 +23,97 @@ pub fn launcher_jar() -> Result<PathBuf, String> {
     Ok(destination)
 }
 
+/// Oldest Java the HitBoy runtime accepts. Java 25 runs every supported Minecraft from 1.20.1 to 26.x.
+const REQUIRED_JAVA: u32 = 25;
+
 pub fn java_executable() -> Result<PathBuf, String> {
     if let Some(configured) = std::env::var_os("HITBOY_JAVA") {
         let path = PathBuf::from(configured);
         if path.is_file() { return Ok(path); }
     }
+    let mut candidates = Vec::new();
     if let Some(java_home) = std::env::var_os("JAVA_HOME") {
-        let path = PathBuf::from(java_home).join("bin").join(java_name());
-        if path.is_file() { return Ok(path); }
+        candidates.push(PathBuf::from(java_home).join("bin").join(java_name()));
     }
-    if command_works("java") { return Ok(PathBuf::from("java")); }
-    let mut roots = Vec::new();
+    candidates.push(PathBuf::from("java"));
+    let mut roots = vec![private_java_root()];
     if let Some(app_data) = std::env::var_os("APPDATA") {
         roots.push(PathBuf::from(app_data).join(".minecraft").join("runtime"));
     }
     if let Some(program_files) = std::env::var_os("ProgramFiles") {
         let root = PathBuf::from(program_files);
-        roots.push(root.join("Microsoft"));
-        roots.push(root.join("Eclipse Adoptium"));
-        roots.push(root.join("Java"));
+        for vendor in ["Microsoft", "Eclipse Adoptium", "Java", "Amazon Corretto", "Zulu"] {
+            roots.push(root.join(vendor));
+        }
     }
     for root in roots {
-        if let Some(path) = find_java(&root, 0) { return Ok(path); }
+        find_all_java(&root, 0, &mut candidates);
     }
-    install_private_java()
+    // Pick the newest runtime: the official launcher's .minecraftuntime often also holds Java 8 or 16,
+    // which cannot run HitBoy.
+    let best = candidates.into_iter()
+        .filter_map(|path| java_feature(&path).map(|feature| (feature, path)))
+        .max_by_key(|(feature, _)| *feature);
+    match best {
+        Some((feature, path)) if feature >= REQUIRED_JAVA => Ok(path),
+        _ => install_private_java(),
+    }
 }
 
 fn java_name() -> &'static str { if cfg!(windows) { "java.exe" } else { "java" } }
 
-fn command_works(command: &str) -> bool {
-    std::process::Command::new(command).arg("-version").output()
-        .map(|result| result.status.success()).unwrap_or(false)
-}
-
-fn find_java(directory: &Path, depth: usize) -> Option<PathBuf> {
-    if depth > 8 || !directory.is_dir() { return None; }
-    let direct = directory.join("bin").join(java_name());
-    if direct.is_file() { return Some(direct); }
-    for entry in fs::read_dir(directory).ok()?.flatten() {
-        if entry.file_type().ok()?.is_dir() {
-            if let Some(path) = find_java(&entry.path(), depth + 1) { return Some(path); }
-        }
-    }
-    None
-}
-
-fn install_private_java() -> Result<PathBuf, String> {
-    let runtime = dirs::data_local_dir()
+fn private_java_root() -> PathBuf {
+    dirs::data_local_dir()
         .or_else(dirs::home_dir)
         .unwrap_or(PathBuf::from("."))
         .join("HitBoysModLoader")
         .join("runtime")
-        .join("java");
-    if let Some(path) = find_java(&runtime, 0) {
+        .join("java")
+}
+
+/// Major Java version reported by `java -version`, e.g. 25 or 8.
+fn java_feature(java: &Path) -> Option<u32> {
+    let mut command = std::process::Command::new(java);
+    command.arg("-version");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let output = command.output().ok()?;
+    if !output.status.success() { return None; }
+    let text = String::from_utf8_lossy(&output.stderr);
+    let version = text.split('"').nth(1)?;
+    let mut parts = version.split(|c: char| c == '.' || c == '-' || c == '+' || c == '_');
+    let first: u32 = parts.next()?.parse().ok()?;
+    if first == 1 { parts.next()?.parse().ok() } else { Some(first) }
+}
+
+fn find_all_java(directory: &Path, depth: usize, found: &mut Vec<PathBuf>) {
+    if depth > 8 || !directory.is_dir() { return; }
+    let direct = directory.join("bin").join(java_name());
+    if direct.is_file() {
+        found.push(direct);
+        return;
+    }
+    if let Ok(entries) = fs::read_dir(directory) {
+        for entry in entries.flatten() {
+            if entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+                find_all_java(&entry.path(), depth + 1, found);
+            }
+        }
+    }
+}
+
+fn find_java(directory: &Path) -> Option<PathBuf> {
+    let mut found = Vec::new();
+    find_all_java(directory, 0, &mut found);
+    found.into_iter().next()
+}
+
+fn install_private_java() -> Result<PathBuf, String> {
+    let runtime = private_java_root();
+    if let Some(path) = find_java(&runtime).filter(|path| java_feature(path).unwrap_or(0) >= REQUIRED_JAVA) {
         return Ok(path);
     }
     fs::create_dir_all(&runtime).map_err(|error| error.to_string())?;
@@ -110,7 +148,7 @@ fn install_private_java() -> Result<PathBuf, String> {
             std::io::copy(&mut entry, &mut file).map_err(|error| error.to_string())?;
         }
     }
-    find_java(&runtime, 0).ok_or_else(|| "Java downloaded, but its executable was not found.".to_string())
+    find_java(&runtime).ok_or_else(|| "Java downloaded, but its executable was not found.".to_string())
 }
 
 #[cfg(test)]

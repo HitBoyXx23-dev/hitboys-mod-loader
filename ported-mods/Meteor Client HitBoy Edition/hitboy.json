@@ -1,8 +1,0 @@
-{
-  "id": "meteor-client",
-  "name": "Meteor Client HitBoy Edition",
-  "version": "1.21.11-86",
-  "type": "client",
-  "mainClass": "MeteorClient",
-  "dependsOn": []
-}

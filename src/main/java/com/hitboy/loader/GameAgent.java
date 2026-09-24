@@ -197,11 +197,28 @@ public class GameAgent {
             hookRender(node);
             hookKey(node);
             hookTitleScreen(node, false);
+            hookClientBrand(node);
             ClassWriter cw = createClassWriter(cr, loader);
             node.accept(cw);
             return cw.toByteArray();
         } catch (Exception e) { e.printStackTrace(); }
         return null;
+    }
+    /**
+     * Reports the client brand "hitboy" (as Fabric reports "fabric"), so Minecraft treats the game as
+     * modded and the title screen shows "Minecraft <version>/HitBoy's Mod Loader" even with no mods.
+     */
+    private static void hookClientBrand(ClassNode node) {
+        if (!"net/minecraft/client/ClientBrandRetriever".equals(node.name)) return;
+        for (MethodNode method : node.methods) {
+            if (!"getClientModName".equals(method.name) || !"()Ljava/lang/String;".equals(method.desc)) continue;
+            method.instructions.clear();
+            method.tryCatchBlocks.clear();
+            if (method.localVariables != null) method.localVariables.clear();
+            method.instructions.add(new LdcInsnNode("hitboy"));
+            method.instructions.add(new InsnNode(Opcodes.ARETURN));
+            System.out.println("Set client brand: hitboy");
+        }
     }
     private static byte[] transformTitleMenuClass(String cn, byte[] buf, ClassLoader loader) {
         ClassReader cr = new ClassReader(buf);
