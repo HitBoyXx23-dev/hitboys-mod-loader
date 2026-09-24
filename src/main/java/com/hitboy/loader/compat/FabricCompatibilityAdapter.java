@@ -49,11 +49,13 @@ public final class FabricCompatibilityAdapter implements HitBoyCompatibilityAdap
     @Override
     public void analyze(HitBoyModDescriptor descriptor, JarFile jar, CompatibilityReport report) throws IOException {
         report.add(CompatibilityIssue.Severity.INFO, "FABRIC_DESCRIPTOR", "Fabric metadata was normalized successfully.");
-        if (!descriptor.getMixinConfigs().isEmpty()) report.add(CompatibilityIssue.Severity.ERROR, "MIXIN_RUNTIME", "Mixin execution is not implemented for " + descriptor.getMixinConfigs());
-        if (descriptor.getAccessWidener() != null) report.add(CompatibilityIssue.Severity.ERROR, "ACCESS_WIDENER", "Access widener transformation is not implemented: " + descriptor.getAccessWidener());
-        if (!descriptor.getNestedJars().isEmpty()) report.add(CompatibilityIssue.Severity.ERROR, "NESTED_JARS", "Nested JAR extraction is not implemented for " + descriptor.getNestedJars());
-        if (descriptor.getEntrypoints().isEmpty()) report.add(CompatibilityIssue.Severity.ERROR, "ENTRYPOINT", "No Fabric entrypoints were declared.");
-        else report.add(CompatibilityIssue.Severity.ERROR, "FABRIC_API", "Fabric entrypoints require conversion to HitBoy lifecycle APIs.");
+        report.add(CompatibilityIssue.Severity.INFO, "FABRIC_RUNTIME",
+            "Runs in HitBoy's mixed-compatibility mode on Minecraft 1.21.11 (Mixins, access wideners, and entrypoints).");
+        for (HitBoyDependency dependency : descriptor.getDependencies()) {
+            if (dependency.isRequired() && dependency.getId().startsWith("fabric-")) {
+                report.add(CompatibilityIssue.Severity.ERROR, "FABRIC_API", "Requires Fabric API module " + dependency.getId() + ", which HitBoy does not provide yet.");
+            }
+        }
     }
 
     private ModEnvironment parseEnvironment(String value) {

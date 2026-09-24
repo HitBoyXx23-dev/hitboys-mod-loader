@@ -25,8 +25,12 @@ import org.objectweb.asm.tree.MethodNode;
 public final class OptionalAccessWidenerRuntime {
     private OptionalAccessWidenerRuntime() {}
 
-    public static void initialize(Path modsDirectory) {
-        if (!Files.isDirectory(modsDirectory)) return;
+    public static void initialize(Path... modsDirectories) {
+        for (Path modsDirectory : modsDirectories) initializeOne(modsDirectory);
+    }
+
+    private static void initializeOne(Path modsDirectory) {
+        if (modsDirectory == null || !Files.isDirectory(modsDirectory)) return;
         // Created only when a mod ships an access widener: the mappings exist for 1.21.11 only, and
         // building them eagerly crashed every other version at startup even with no such mods.
         LazyRemapper remapper = new LazyRemapper(System.getProperty("hitboy.game-version", "1.21.11"));
@@ -85,7 +89,9 @@ public final class OptionalAccessWidenerRuntime {
     static void read(InputStream input, HitBoyIntermediaryRemapper remapper, AccessRules rules) throws Exception {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String header = reader.readLine();
-            if (header == null || !header.replace('\t', ' ').trim().startsWith("accessWidener ")) {
+            String normalized = header == null ? "" : header.replace('\t', ' ').trim();
+            // Fabric's newer "classTweaker" format is a superset of access wideners.
+            if (!normalized.startsWith("accessWidener ") && !normalized.startsWith("classTweaker ")) {
                 throw new IllegalArgumentException("Invalid access widener header");
             }
             String line;
@@ -101,6 +107,10 @@ public final class OptionalAccessWidenerRuntime {
     private static void addDeclaration(String[] values, HitBoyIntermediaryRemapper remapper, AccessRules rules) {
         if (values.length < 3) throw new IllegalArgumentException("Invalid access widener declaration");
         String operation = values[0];
+        // "transitive-accessible" and friends behave like the plain operation at runtime.
+        if (operation.startsWith("transitive-")) operation = operation.substring("transitive-".length());
+        // Class-tweaker-only directives (such as inject-interface) change nothing HitBoy needs at runtime.
+        if (!operation.equals("accessible") && !operation.equals("extendable") && !operation.equals("mutable")) return;
         String kind = values[1];
         String owner = remapper.map(values[2]);
         ClassRule classRule = rules.classes.computeIfAbsent(owner, ignored -> new ClassRule());

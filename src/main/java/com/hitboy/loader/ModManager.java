@@ -79,6 +79,9 @@ public class ModManager {
         try (JarFile jar = new JarFile(jarPath.toFile())) {
             JarEntry descriptor = jar.getJarEntry("hitboy.json");
             if (descriptor == null) {
+                if (jar.getJarEntry("fabric.mod.json") != null && com.hitboy.loader.fabric.FabricRuntime.enabled()) {
+                    return null; // run by the Fabric runtime in mixed-compatibility mode
+                }
                 System.err.println(
                     "Skipping incompatible mod JAR (missing hitboy.json): " + jarPath.getFileName()
                 );

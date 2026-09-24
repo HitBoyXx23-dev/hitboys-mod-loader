@@ -35,6 +35,8 @@ public final class HitBoyMixinService implements IMixinService, IClassProvider, 
     }
 
     @Override public String getName() { return "HitBoy"; }
+    @Override public org.spongepowered.asm.service.IAdviceProvider getAdviceProvider() { return org.spongepowered.asm.service.IAdviceProvider.GENERIC; }
+    @Override public org.spongepowered.asm.service.IFeatureValidator getFeatureValidator() { return org.spongepowered.asm.service.IFeatureValidator.ALLOW_ALL; }
     @Override public boolean isValid() { return true; }
     @Override public void prepare() {}
     @Override public MixinEnvironment.Phase getInitialPhase() { return MixinEnvironment.Phase.PREINIT; }
@@ -56,7 +58,7 @@ public final class HitBoyMixinService implements IMixinService, IClassProvider, 
     @Override public InputStream getResourceAsStream(String name) { return loader().getResourceAsStream(name); }
     @Override public String getSideName() { return System.getProperty("hitboy.environment", "CLIENT"); }
     @Override public MixinEnvironment.CompatibilityLevel getMinCompatibilityLevel() { return MixinEnvironment.CompatibilityLevel.JAVA_17; }
-    @Override public MixinEnvironment.CompatibilityLevel getMaxCompatibilityLevel() { return MixinEnvironment.CompatibilityLevel.JAVA_21; }
+    @Override public MixinEnvironment.CompatibilityLevel getMaxCompatibilityLevel() { return MixinEnvironment.CompatibilityLevel.JAVA_25; }
     @Override public ILogger getLogger(String name) { return loggers.computeIfAbsent(name, LoggerAdapterConsole::new); }
     @Override public URL[] getClassPath() {
         if (loader() instanceof java.net.URLClassLoader) return ((java.net.URLClassLoader) loader()).getURLs();

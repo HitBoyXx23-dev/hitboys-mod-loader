@@ -16,6 +16,10 @@
 
     <repositories>
         <repository>
+            <id>fabricmc</id>
+            <url>https://maven.fabricmc.net/</url>
+        </repository>
+        <repository>
             <id>sponge</id>
             <url>https://repo.spongepowered.org/repository/maven-public/</url>
         </repository>
@@ -64,10 +68,18 @@
             <version>2.10.1</version>
         </dependency>
 
+        <!-- Fabric's maintained Mixin fork: same org.spongepowered packages, supports current Java levels
+             (JAVA_21+) that Fabric mods request. -->
         <dependency>
-            <groupId>org.spongepowered</groupId>
-            <artifactId>mixin</artifactId>
-            <version>0.8.7</version>
+            <groupId>net.fabricmc</groupId>
+            <artifactId>sponge-mixin</artifactId>
+            <version>0.17.4+mixin.0.8.7</version>
+        </dependency>
+        <!-- Fabric Loader provides MixinExtras to every mod, so HitBoy's Fabric runtime does too. -->
+        <dependency>
+            <groupId>io.github.llamalad7</groupId>
+            <artifactId>mixinextras-common</artifactId>
+            <version>0.5.5</version>
         </dependency>
 
         <dependency>

@@ -43,6 +43,16 @@ public class GameAgent {
         }
     }
 
+    /** Adds one JAR to the game class path (used for libraries bundled inside Fabric mods). */
+    public static synchronized void appendJar(Path jar) {
+        if (instrumentation == null) return;
+        try {
+            instrumentation.appendToSystemClassLoaderSearch(new JarFile(jar.toFile()));
+        } catch (java.io.IOException | IllegalArgumentException exception) {
+            System.err.println("HitBoy could not add " + jar + " to the classpath: " + exception);
+        }
+    }
+
     /** Mods such as Meteor bundle their libraries as META-INF/jars/*.jar; those must be on the classpath too. */
     private static void appendNestedJars(Path modJar, String stem) throws java.io.IOException {
         Path destination = Path.of(System.getProperty("hitboy.home", System.getProperty("hitboy.game-directory", ".")),
@@ -70,8 +80,35 @@ public class GameAgent {
         }
     }
 
+    /**
+     * Defines a generated class in the same package, loader, and protection domain as a class that is
+     * already loaded there. Minecraft's client JAR is signed, so a class for one of its packages that
+     * came from any other (unsigned) JAR is rejected with "signer information does not match".
+     */
+    private static boolean defineBesideLoadedClass(String internalName, byte[] bytes) {
+        int slash = internalName.lastIndexOf('/');
+        String packageName = slash < 0 ? "" : internalName.substring(0, slash).replace('/', '.');
+        if (packageName.startsWith("org.spongepowered.")) return false; // Mixin's own synthetic package is unsigned
+        ClassLoader system = ClassLoader.getSystemClassLoader();
+        for (Class<?> loaded : instrumentation.getAllLoadedClasses()) {
+            if (loaded.getClassLoader() != system || !packageName.equals(loaded.getPackageName())
+                || loaded.isArray() || loaded.isHidden()) continue;
+            try {
+                java.lang.invoke.MethodHandles.privateLookupIn(loaded, java.lang.invoke.MethodHandles.lookup())
+                    .defineClass(bytes);
+                return true;
+            } catch (LinkageError alreadyDefined) {
+                return true;
+            } catch (IllegalAccessException | RuntimeException notUsable) {
+                // try another class from the same package
+            }
+        }
+        return false;
+    }
+
     public static synchronized void publishGeneratedClass(String internalName, byte[] bytes) {
         if (instrumentation == null || bytes == null || bytes.length == 0) return;
+        if (defineBesideLoadedClass(internalName, bytes)) return;
         try {
             Path directory = Path.of(System.getProperty("hitboy.game-directory", "."), "cache", "generated-mixins");
             Files.createDirectories(directory);

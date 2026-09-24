@@ -38,7 +38,7 @@ class CompatibilityCliTest {
     }
 
     @Test
-    void blocksFabricPortWhenCompatibilityIsIncomplete() throws Exception {
+    void explainsThatFabricModsRunInMixedMode() throws Exception {
         Path jar = temporaryDirectory.resolve("fabric.jar");
         writeJar(jar, "fabric.mod.json", "{\"schemaVersion\":1,\"id\":\"foreign\",\"name\":\"Foreign\",\"version\":\"1.0.0\",\"entrypoints\":{\"client\":[\"foreign.Client\"]}}");
         ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
@@ -50,9 +50,8 @@ class CompatibilityCliTest {
             new PrintStream(errorBytes, true, StandardCharsets.UTF_8)
         );
 
-        assertEquals(1, exitCode);
-        assertTrue(outputBytes.toString(StandardCharsets.UTF_8).contains("Compatibility: BLOCKED"));
-        assertTrue(errorBytes.toString(StandardCharsets.UTF_8).contains("Port blocked"));
+        assertEquals(0, exitCode);
+        assertTrue(outputBytes.toString(StandardCharsets.UTF_8).contains("mixed-compatibility mode runs Fabric mods"));
     }
 
     private void writeJar(Path path, String descriptor, String content) throws Exception {

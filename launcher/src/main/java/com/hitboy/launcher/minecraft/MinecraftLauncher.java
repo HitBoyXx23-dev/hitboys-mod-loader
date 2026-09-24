@@ -147,23 +147,20 @@ public class MinecraftLauncher {
         if (jars == null) return "";
         List<String> ps = new ArrayList<>();
         for (File jar : jars) {
-            requireNativeHitBoyMod(jar);
+            // Only HitBoy mods go on the launch classpath. Fabric mods are remapped and loaded by the
+            // in-game runtime (mixed-compatibility mode); other foreign mods are skipped there.
+            if (!isHitBoyMod(jar)) continue;
             ps.add(jar.getAbsolutePath());
             ps.addAll(extractNestedLibraries(jar));
         }
         return String.join(File.pathSeparator, ps);
     }
 
-    private void requireNativeHitBoyMod(File mod) throws IOException {
+    private boolean isHitBoyMod(File mod) {
         try (JarFile jar = new JarFile(mod)) {
-            if (jar.getJarEntry("hitboy.json") != null) return;
-            String source = jar.getJarEntry("fabric.mod.json") != null ? "Fabric"
-                : jar.getJarEntry("META-INF/neoforge.mods.toml") != null ? "NeoForge"
-                : jar.getJarEntry("META-INF/mods.toml") != null ? "Forge" : "unknown";
-            throw new IOException(
-                mod.getName() + " is a " + source
-                    + " mod and cannot launch directly. Port it to the HitBoy API first."
-            );
+            return jar.getJarEntry("hitboy.json") != null;
+        } catch (IOException unreadable) {
+            return false;
         }
     }
 

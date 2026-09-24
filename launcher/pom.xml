@@ -40,6 +40,26 @@
                 <version>3.12.1</version>
                 <configuration><source>${java.version}</source><target>${java.version}</target><encoding>UTF-8</encoding></configuration>
             </plugin>
+            <!-- Mixin reads ASM's version from this manifest section. Without it, the bundled ASM 9.8 is
+                 reported as 9.0 and Fabric mods that request JAVA_21 Mixin compatibility fail to load. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <archive>
+                        <manifestSections>
+                            <manifestSection>
+                                <name>org/objectweb/asm/</name>
+                                <manifestEntries>
+                                    <Implementation-Title>ASM</Implementation-Title>
+                                    <Implementation-Version>9.8</Implementation-Version>
+                                </manifestEntries>
+                            </manifestSection>
+                        </manifestSections>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

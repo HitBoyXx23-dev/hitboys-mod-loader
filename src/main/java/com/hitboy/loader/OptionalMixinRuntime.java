@@ -18,11 +18,15 @@ import java.util.jar.JarFile;
 
 public final class OptionalMixinRuntime {
     public static final String ENABLED_PROPERTY = "hitboy.mixin.enabled";
+    private static final java.util.Set<String> PUBLISHED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private OptionalMixinRuntime() {}
 
-    public static void initialize(Path modsDirectory) {
-        List<String> configurations = discoverConfigurations(modsDirectory);
+    public static void initialize(Path... modsDirectories) {
+        List<String> configurations = new ArrayList<>();
+        for (Path modsDirectory : modsDirectories) {
+            if (modsDirectory != null) configurations.addAll(discoverConfigurations(modsDirectory));
+        }
         if (configurations.isEmpty()) return;
         String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
         if (OptionalMixinRuntime.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") == null) {
@@ -105,12 +109,15 @@ public final class OptionalMixinRuntime {
                     @Override public void visitFieldInsn(int opcode, String owner, String field, String desc) { collect(owner); }
                     @Override public void visitMethodInsn(int opcode, String owner, String method, String desc, boolean itf) { collect(owner); }
                     private void collect(String type) {
-                        if (type.startsWith("org/spongepowered/asm/synthetic/")) names.add(type);
+                        // Mixin generates its synthetic classes and copies of mixins' anonymous inner
+                        // classes ("Target$Anonymous$<hash>") on demand; publish them before use.
+                        if (type.startsWith("org/spongepowered/asm/synthetic/") || type.contains("$Anonymous$")) names.add(type);
                     }
                 };
             }
         }, org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES);
         for (String name : names) {
+            if (!PUBLISHED.add(name)) continue;
             byte[] generated = transformer.generateClass(
                 org.spongepowered.asm.mixin.MixinEnvironment.getDefaultEnvironment(), name.replace('/', '.'));
             GameAgent.publishGeneratedClass(name, generated);

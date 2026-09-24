@@ -28,12 +28,20 @@ class ModInspectorTest {
     }
 
     @Test
-    void readsFabricFeaturesAndBlocksUnsupportedRuntime() throws Exception {
+    void readsFabricFeaturesAndAcceptsLoaderOnlyMods() throws Exception {
         String metadata = "{\"schemaVersion\":1,\"id\":\"fabric-demo\",\"name\":\"Fabric Demo\",\"version\":\"2.0\",\"environment\":\"client\",\"entrypoints\":{\"client\":[\"demo.Client\"]},\"mixins\":[\"demo.mixins.json\"],\"accessWidener\":\"demo.accesswidener\",\"jars\":[{\"file\":\"META-INF/jars/lib.jar\"}]}";
         Path jar = jar("fabric.jar", Map.of("fabric.mod.json", metadata));
         ModInspector.Inspection inspection = new ModInspector().inspect(jar);
         assertEquals(SourceLoader.FABRIC, inspection.getDescriptor().getSourceLoader());
         assertEquals("demo.mixins.json", inspection.getDescriptor().getMixinConfigs().get(0));
+        // Mixins, access wideners, and entrypoints run in mixed-compatibility mode.
+        assertTrue(inspection.getReport().isCompatible());
+    }
+
+    @Test
+    void blocksFabricModsThatNeedFabricApi() throws Exception {
+        String metadata = "{\"schemaVersion\":1,\"id\":\"needs-api\",\"version\":\"1.0\",\"depends\":{\"fabric-api\":\"*\"}}";
+        ModInspector.Inspection inspection = new ModInspector().inspect(jar("api.jar", Map.of("fabric.mod.json", metadata)));
         assertFalse(inspection.getReport().isCompatible());
     }
 

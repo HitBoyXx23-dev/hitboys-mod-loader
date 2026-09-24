@@ -40,11 +40,18 @@ public class NativeLoader {
         }
         if (!md.exists()) md.mkdirs();
         System.out.println("Scanning mods: " + modsDir + " exists=" + md.exists());
+        java.nio.file.Path fabricMods = null;
         try {
             new InstanceVerifier().requireCompatibleHitBoyMods(md.toPath());
+            if (com.hitboy.loader.fabric.FabricRuntime.enabled()) {
+                // Mixed-compatibility mode: Fabric mods run next to HitBoy mods.
+                fabricMods = com.hitboy.loader.fabric.FabricRuntime.prepare(
+                    md.toPath(), System.getProperty("hitboy.game-version", "1.21.11"), args);
+            }
             GameAgent.appendHitBoyModsToClasspath(md.toPath());
-            OptionalAccessWidenerRuntime.initialize(md.toPath());
-            OptionalMixinRuntime.initialize(md.toPath());
+            if (fabricMods != null) GameAgent.appendHitBoyModsToClasspath(fabricMods);
+            OptionalAccessWidenerRuntime.initialize(md.toPath(), fabricMods);
+            OptionalMixinRuntime.initialize(md.toPath(), fabricMods);
             modManager.scanAndLoadMods(modsDir);
         } catch (Throwable failure) {
             // Mod problems must never stop Minecraft from opening; report them and start without the failed mods.
@@ -63,6 +70,7 @@ public class NativeLoader {
             System.out.println("Bootstrapping Minecraft main: " + mcMain + " mods=" + modManager.getLoadedModCount());
             // Post init event so mods can do setup
             eventBus.post(new Object() { public String toString(){return "HitBoyInit";}});
+            if (fabricMods != null) com.hitboy.loader.fabric.FabricRuntime.preLaunch();
             Class<?> mcClass = Class.forName(mcMain, true, Thread.currentThread().getContextClassLoader());
             java.lang.reflect.Method m = mcClass.getMethod("main", String[].class);
             m.invoke(null, (Object) mcArgs);

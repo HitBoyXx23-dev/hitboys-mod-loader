@@ -64,7 +64,19 @@ public final class CompatibilityCli {
         }
         ModInspector.Inspection inspection = new ModInspector().inspect(source);
         printDescriptor(inspection.getDescriptor(), output);
-        printReport(inspection.getReport(), output);
+        if (inspection.getDescriptor().getSourceLoader() == SourceLoader.FABRIC) {
+            for (HitBoyDependency dependency : inspection.getDescriptor().getDependencies()) {
+                if (dependency.isRequired() && dependency.getId().startsWith("fabric-")) {
+                    output.println("Needs Fabric API (" + dependency.getId() + "), which HitBoy does not provide yet.");
+                    return 1;
+                }
+            }
+            output.println("This Fabric mod does not need porting: HitBoy's mixed-compatibility mode runs Fabric mods");
+            output.println("directly on Minecraft 1.21.11 (Mixins, access wideners, and Fabric Loader API included).");
+            output.println("Put it in the mods folder and start hitboy-mixed-mod-compatibility.exe, or install the");
+            output.println("profile with the patcher's \"Mixed Compatibility\" option. Mods that need Fabric API are not supported yet.");
+            return 0;
+        }
         if (!inspection.getReport().isCompatible()) {
             error.println("Port blocked because required compatibility features are not implemented.");
             return 1;

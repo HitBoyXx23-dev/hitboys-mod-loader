@@ -75,6 +75,7 @@ public final class InstanceVerifier {
                 hitBoyJars.add(jarName);
                 hitBoyIds.add(descriptor.getId());
             } else {
+                if (descriptor.getSourceLoader() == SourceLoader.FABRIC && com.hitboy.loader.fabric.FabricRuntime.enabled()) continue;
                 System.out.println("Skipping " + descriptor.getSourceLoader() + " mod (not a HitBoy mod): " + jarName);
             }
         }

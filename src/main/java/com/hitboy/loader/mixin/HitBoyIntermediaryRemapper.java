@@ -138,7 +138,16 @@ public final class HitBoyIntermediaryRemapper implements IRemapper {
     public String map(String typeName) {
         String mapped = classes.get(typeName);
         if (mapped != null) return mapped;
-        return namedClasses.getOrDefault(typeName, typeName);
+        mapped = namedClasses.get(typeName);
+        if (mapped != null) return mapped;
+        // Anonymous and local classes ("...$class_11464$1") are not listed in the mappings; map the
+        // enclosing class and keep the suffix, as Fabric's remapper does.
+        int dollar = typeName.lastIndexOf('$');
+        if (dollar > 0) {
+            String outer = map(typeName.substring(0, dollar));
+            if (!outer.equals(typeName.substring(0, dollar))) return outer + typeName.substring(dollar);
+        }
+        return typeName;
     }
 
     @Override
@@ -181,7 +190,7 @@ public final class HitBoyIntermediaryRemapper implements IRemapper {
         }
         if (value.matches("method_\\d+")) return bareMethodSelectors.getOrDefault(value, value);
         if (value.matches("field_\\d+")) return bareFieldSelectors.getOrDefault(value, value);
-        return Pattern.compile("net/minecraft/class_\\d+(?:\\$class_\\d+)*")
+        return Pattern.compile("net/minecraft/class_\\d+(?:\\$class_\\d+)*|(?:[a-z0-9_]+/)+[A-Za-z0-9_]+(?:\\$class_\\d+)+")
             .matcher(value).replaceAll(match -> Matcher.quoteReplacement(map(match.group())));
     }
 
