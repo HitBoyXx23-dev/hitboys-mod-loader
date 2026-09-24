@@ -17,6 +17,26 @@ public final class ModMenuHelper {
     public static void drawClientIndicator(Object screen, Object graphics) {
     }
 
+    private static volatile Runnable pendingScreen;
+    private static volatile long pendingScreenAt;
+
+    /**
+     * Switches screens a moment later, on the client tick. Switching inside the Back button's press
+     * handler let the same click's release land on the title screen and open Multiplayer.
+     */
+    private static void later(Runnable switchScreen) {
+        pendingScreenAt = System.nanoTime() + 250_000_000L;
+        pendingScreen = switchScreen;
+    }
+
+    /** Called every client tick. */
+    public static void runPendingScreen() {
+        Runnable task = pendingScreen;
+        if (task == null || System.nanoTime() < pendingScreenAt) return;
+        pendingScreen = null;
+        task.run();
+    }
+
     public static void injectModsButton(Object titleScreen) {
         // Re-add after the title screen rebuilds its widgets (for example on window resize).
         synchronized (INJECTED_BUTTONS) {
@@ -200,10 +220,10 @@ public final class ModMenuHelper {
             Class<?> screenClass = Class.forName("net.minecraft.client.gui.screens.Screen", true, loader);
             Class<?> alertScreenClass = Class.forName("net.minecraft.client.gui.screens.AlertScreen", true, loader);
             Class<?> minecraftClass = Class.forName("net.minecraft.client.Minecraft", true, loader);
-            Object title = componentClass.getMethod("literal", String.class).invoke(null, "Meteor Client - HitBoy's Mod Loader Edition");
+            Object title = componentClass.getMethod("literal", String.class).invoke(null, "HitBoy's Loaded Mods");
             Object message = componentClass.getMethod("literal", String.class).invoke(null, installedModSummary());
             Object minecraft = minecraftClass.getMethod("getInstance").invoke(null);
-            Runnable returnToTitle = () -> setNamedScreen(minecraft, screenClass, titleScreen);
+            Runnable returnToTitle = () -> later(() -> setNamedScreen(minecraft, screenClass, titleScreen));
             Constructor<?> constructor = alertScreenClass.getConstructor(Runnable.class, componentClass, componentClass);
             Object modsScreen = constructor.newInstance(returnToTitle, title, message);
             setNamedScreen(minecraft, screenClass, modsScreen);
@@ -231,6 +251,15 @@ public final class ModMenuHelper {
     private static void setNamedScreen(Object minecraft, Class<?> screenClass, Object screen) {
         try {
             minecraft.getClass().getMethod("setScreen", screenClass).invoke(minecraft, screen);
+            return;
+        } catch (NoSuchMethodException moved) {
+            // 26.3 moved it to Minecraft#gui: minecraft.gui.setScreen(screen)
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Unable to switch the Minecraft screen", e);
+        }
+        try {
+            Object gui = minecraft.getClass().getField("gui").get(minecraft);
+            gui.getClass().getMethod("setScreen", screenClass).invoke(gui, screen);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("Unable to switch the Minecraft screen", e);
         }
@@ -245,7 +274,7 @@ public final class ModMenuHelper {
             Object title = componentClass.getMethod("b", String.class).invoke(null, "HitBoy's Loaded Mods");
             Object message = componentClass.getMethod("b", String.class).invoke(null, installedModSummary());
             Object minecraft = minecraftInstance(loader);
-            Runnable returnToTitle = () -> setScreen(minecraft, screenClass, titleScreen);
+            Runnable returnToTitle = () -> later(() -> setScreen(minecraft, screenClass, titleScreen));
             Constructor<?> constructor = alertScreenClass.getConstructor(Runnable.class, componentClass, componentClass);
             Object modsScreen = constructor.newInstance(returnToTitle, title, message);
             setScreen(minecraft, screenClass, modsScreen);
@@ -268,7 +297,7 @@ public final class ModMenuHelper {
             Object title = componentClass.getMethod("b", String.class).invoke(null, "HitBoy's Loaded Mods");
             Object message = componentClass.getMethod("b", String.class).invoke(null, installedModSummary());
             Object minecraft = minecraftInstance12111(loader);
-            Runnable returnToTitle = () -> setScreen(minecraft, screenClass, titleScreen);
+            Runnable returnToTitle = () -> later(() -> setScreen(minecraft, screenClass, titleScreen));
             Constructor<?> constructor = alertScreenClass.getConstructor(Runnable.class, componentClass, componentClass);
             Object modsScreen = constructor.newInstance(returnToTitle, title, message);
             setScreen(minecraft, screenClass, modsScreen);

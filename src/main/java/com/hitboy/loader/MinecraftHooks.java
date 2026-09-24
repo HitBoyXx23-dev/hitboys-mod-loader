@@ -24,6 +24,7 @@ public class MinecraftHooks {
             return;
         }
         GameContext.setMinecraft(minecraft);
+        ModMenuHelper.runPendingScreen();
         ModMenuHelper.injectForCurrentScreen(minecraft);
         EventBus bus = NativeLoader.getEventBus();
         if (bus != null) {
@@ -33,6 +34,7 @@ public class MinecraftHooks {
     }
     public static void onRenderTick(Object minecraft) {
         GameContext.setMinecraft(minecraft);
+        ModMenuHelper.runPendingScreen();
         ModMenuHelper.injectForCurrentScreen(minecraft);
         try {
             Object mc = minecraft;
