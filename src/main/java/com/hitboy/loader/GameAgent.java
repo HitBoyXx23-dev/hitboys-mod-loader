@@ -36,9 +36,37 @@ public class GameAgent {
                     continue;
                 }
                 instrumentation.appendToSystemClassLoaderSearch(file);
+                appendNestedJars(jar, stem);
             }
         } catch (java.io.IOException exception) {
             throw new IllegalStateException("Could not add HitBoy mods from " + modsDirectory + " to the classpath", exception);
+        }
+    }
+
+    /** Mods such as Meteor bundle their libraries as META-INF/jars/*.jar; those must be on the classpath too. */
+    private static void appendNestedJars(Path modJar, String stem) throws java.io.IOException {
+        Path destination = Path.of(System.getProperty("hitboy.home", System.getProperty("hitboy.game-directory", ".")),
+            "cache", "nested", stem);
+        try (JarFile outer = new JarFile(modJar.toFile())) {
+            java.util.Enumeration<JarEntry> entries = outer.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory() || !entry.getName().startsWith("META-INF/jars/") || !entry.getName().endsWith(".jar")) continue;
+                // The agent classpath API rejects some characters (such as '+') in file names.
+                String safeName = Path.of(entry.getName()).getFileName().toString().replaceAll("[^A-Za-z0-9._-]", "_");
+                Path output = destination.resolve(safeName);
+                if (!Files.isRegularFile(output) || Files.size(output) != entry.getSize()) {
+                    Files.createDirectories(destination);
+                    try (java.io.InputStream input = outer.getInputStream(entry)) {
+                        Files.copy(input, output, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                try {
+                    instrumentation.appendToSystemClassLoaderSearch(new JarFile(output.toFile()));
+                } catch (IllegalArgumentException rejected) {
+                    System.err.println("HitBoy could not add bundled library " + output + " to the classpath");
+                }
+            }
         }
     }
 
@@ -198,6 +226,9 @@ public class GameAgent {
             hookKey(node);
             hookTitleScreen(node, false);
             hookClientBrand(node);
+            if ("net/minecraft/client/gui/screens/TitleScreen".equals(node.name) && replaceTitleBranding(node)) {
+                System.out.println("Replaced title branding: " + node.name);
+            }
             ClassWriter cw = createClassWriter(cr, loader);
             node.accept(cw);
             return cw.toByteArray();
@@ -429,7 +460,12 @@ public class GameAgent {
     }
     private static void hookGameLoop(ClassNode cn) {
         for (MethodNode mn : cn.methods) {
-            if (mn.name.equals("run") || mn.name.equals("tick") || mn.name.contains("update")) {
+            if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
+            // Only the client's own loop. Matching every tick/update/run broke unobfuscated 26.x, where those
+            // names exist on hundreds of classes, including static methods.
+            boolean clientTick = cn.name.equals("net/minecraft/client/Minecraft") && mn.name.equals("tick") && mn.desc.equals("()V");
+            boolean mainThread = cn.name.startsWith("net/minecraft/client/main/Main$") && mn.name.equals("run");
+            if ((clientTick || mainThread) && (mn.access & Opcodes.ACC_STATIC) == 0) {
                 InsnList hook = new InsnList();
                 hook.add(new VarInsnNode(Opcodes.ALOAD, 0));
                 hook.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/MinecraftHooks", "onGameLoopStart", "(Ljava/lang/Object;)V", false));
@@ -442,9 +478,10 @@ public class GameAgent {
     }
     private static void hookRender(ClassNode cn) {
         for (MethodNode mn : cn.methods) {
-            boolean isRender = mn.name.equals("render") || mn.name.equals("draw") || mn.name.equals("func_71411_J") || (mn.desc.equals("()V") && cn.name.contains("Minecraft"));
-            if (!isRender) continue;
-            if (cn.name.equals("net/minecraft/client/Minecraft") && (mn.desc.equals("()V") || mn.desc.equals("(F)V") || mn.desc.equals("(FJ)V"))) {
+            if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
+            boolean isRender = mn.name.equals("render") || mn.name.equals("draw") || mn.name.equals("func_71411_J");
+            if (!isRender || (mn.access & Opcodes.ACC_STATIC) != 0) continue;
+            if (cn.name.equals("net/minecraft/client/Minecraft") && (mn.desc.equals("(Z)V") || mn.desc.equals("()V") || mn.desc.equals("(F)V") || mn.desc.equals("(FJ)V"))) {
                 InsnList hook = new InsnList();
                 hook.add(new VarInsnNode(Opcodes.ALOAD, 0));
                 hook.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/MinecraftHooks", "onRenderTick", "(Ljava/lang/Object;)V", false));
@@ -457,8 +494,9 @@ public class GameAgent {
     }
     private static void hookKey(ClassNode cn) {
         for (MethodNode mn : cn.methods) {
+            if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
             String n = mn.name.toLowerCase();
-            if ((n.contains("key") || n.contains("keyboard")) && cn.name.contains("Minecraft")) {
+            if ((n.equals("keypress") || n.equals("onkey") || n.equals("keypressed")) && cn.name.equals("net/minecraft/client/Minecraft")) {
                 InsnList hook = new InsnList();
                 if (mn.desc.contains("Ljava/lang/String")) {
                     hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
@@ -497,6 +535,7 @@ public class GameAgent {
             boolean replacedBranding = replaceTitleBranding(cn);
             boolean replacedRealms = replaceRealmsButton(cn);
             for (MethodNode mn : cn.methods) {
+                if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
                 if (mn.name.equals("bg_") && mn.desc.equals("()V")) {
                     InsnList hook = new InsnList();
                     hook.add(new VarInsnNode(Opcodes.ALOAD, 0));
@@ -514,6 +553,7 @@ public class GameAgent {
         }
         // The 1.20.1 title screen's protected no-arg method builds all menu widgets.
         for (MethodNode mn : cn.methods) {
+            if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) != 0) continue; // no body to patch (26.x interfaces)
             if (!mn.desc.equals("()V")) continue;
             if (mn.name.equals("<init>") || mn.name.equals("<clinit>")) continue;
             boolean hasWidget = hasTitleMenuLabels(mn) || containsWidgetRegistration(mn);
@@ -538,7 +578,7 @@ public class GameAgent {
             }
         }
         // ultimate fallback: first ()V method
-        for (MethodNode mn : cn.methods) if (mn.desc.equals("()V") && mn.instructions.size() > 5 && !mn.name.equals("<init>")) {
+        for (MethodNode mn : cn.methods) if ((mn.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE)) == 0 && mn.desc.equals("()V") && mn.instructions.size() > 5 && !mn.name.equals("<init>")) {
             InsnList hook = new InsnList();
             hook.add(new VarInsnNode(Opcodes.ALOAD, 0));
             hook.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/ModMenuHelper", "injectModsButton", "(Ljava/lang/Object;)V", false));

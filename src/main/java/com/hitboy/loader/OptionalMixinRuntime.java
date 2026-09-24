@@ -24,6 +24,12 @@ public final class OptionalMixinRuntime {
     public static void initialize(Path modsDirectory) {
         List<String> configurations = discoverConfigurations(modsDirectory);
         if (configurations.isEmpty()) return;
+        String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
+        if (OptionalMixinRuntime.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") == null) {
+            System.out.println("Mixin mods are built for Minecraft 1.21.11; skipping their Mixins on " + gameVersion
+                + ": " + configurations);
+            return;
+        }
         if ("false".equalsIgnoreCase(System.getProperty(ENABLED_PROPERTY))) {
             throw new IllegalStateException(
                 "Mixins are required by installed mods but Mixin support was explicitly disabled. "

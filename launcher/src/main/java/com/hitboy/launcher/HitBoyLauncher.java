@@ -308,20 +308,6 @@ public class HitBoyLauncher {
             System.err.println("Minecraft launch failed: " + e.getMessage());
             e.printStackTrace();
             if (guiMode) javax.swing.JOptionPane.showMessageDialog(null, "Minecraft failed: " + e.getMessage() + "\nCheck log pane. Did you click Download/Verify? Needs internet first run.", "Launch Failed", javax.swing.JOptionPane.ERROR_MESSAGE);
-            // Fallback demo so exe doesn't just silently close
-            System.out.println("[FALLBACK] Demo NativeLoader launch (no vanilla jar)");
-            try {
-                File loaderJar = findLoaderJar();
-                if (loaderJar != null) {
-                    List<String> cmd = new ArrayList<>();
-                    cmd.add(findJava());
-                    cmd.add("-javaagent:" + loaderJar.getAbsolutePath() + "=" + mappingsFile);
-                    cmd.add("-cp"); cmd.add(buildClasspath(loaderJar));
-                    cmd.add("com.hitboy.loader.NativeLoader");
-                    ProcessBuilder pb = new ProcessBuilder(cmd);
-                    pb.directory(new File(gameDirectory)); pb.inheritIO(); pb.start().waitFor();
-                }
-            } catch (Exception ex) { System.err.println("Fallback failed: " + ex.getMessage()); }
         }
     }
     private String findJava() {

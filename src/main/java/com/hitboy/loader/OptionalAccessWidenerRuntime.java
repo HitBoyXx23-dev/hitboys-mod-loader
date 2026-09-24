@@ -27,7 +27,9 @@ public final class OptionalAccessWidenerRuntime {
 
     public static void initialize(Path modsDirectory) {
         if (!Files.isDirectory(modsDirectory)) return;
-        HitBoyIntermediaryRemapper remapper = new HitBoyIntermediaryRemapper(System.getProperty("hitboy.game-version", "1.21.11"));
+        // Created only when a mod ships an access widener: the mappings exist for 1.21.11 only, and
+        // building them eagerly crashed every other version at startup even with no such mods.
+        LazyRemapper remapper = new LazyRemapper(System.getProperty("hitboy.game-version", "1.21.11"));
         AccessRules rules = new AccessRules();
         try (var paths = Files.list(modsDirectory)) {
             for (Path path : paths.filter(value -> value.toString().endsWith(".jar")).toList()) readJar(path, remapper, rules);
@@ -39,17 +41,44 @@ public final class OptionalAccessWidenerRuntime {
         System.out.println("HitBoy access widener registered for " + rules.classes.size() + " Minecraft classes");
     }
 
-    private static void readJar(Path path, HitBoyIntermediaryRemapper remapper, AccessRules rules) {
+    private static void readJar(Path path, LazyRemapper remapper, AccessRules rules) {
         try (JarFile jar = new JarFile(path.toFile())) {
             if (jar.getJarEntry("hitboy.json") == null) return;
             for (JarEntry entry : jar.stream().filter(value -> value.getName().endsWith(".accesswidener")).toList()) {
+                HitBoyIntermediaryRemapper mappings = remapper.get();
+                if (mappings == null) {
+                    System.out.println("Skipping access widener " + entry.getName() + " from " + path.getFileName()
+                        + ": no HitBoy mappings for Minecraft " + remapper.gameVersion);
+                    continue;
+                }
                 try (InputStream input = jar.getInputStream(entry)) {
-                    read(input, remapper, rules);
+                    read(input, mappings, rules);
                     System.out.println("Loaded access widener " + entry.getName() + " from " + path.getFileName());
                 }
             }
         } catch (Exception exception) {
             throw new IllegalStateException("Could not read access widener from " + path.getFileName(), exception);
+        }
+    }
+
+    private static final class LazyRemapper {
+        final String gameVersion;
+        private HitBoyIntermediaryRemapper remapper;
+        private boolean attempted;
+
+        LazyRemapper(String gameVersion) {
+            this.gameVersion = gameVersion;
+        }
+
+        /** The remapper, or null when this Minecraft version has no bundled mappings. */
+        HitBoyIntermediaryRemapper get() {
+            if (!attempted) {
+                attempted = true;
+                if (HitBoyIntermediaryRemapper.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") != null) {
+                    remapper = new HitBoyIntermediaryRemapper(gameVersion);
+                }
+            }
+            return remapper;
         }
     }
 

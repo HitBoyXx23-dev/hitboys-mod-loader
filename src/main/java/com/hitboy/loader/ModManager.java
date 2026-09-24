@@ -58,7 +58,13 @@ public class ModManager {
         HitBoyClassLoader modClassLoader = new HitBoyClassLoader(sortedMods);
 
         for (ModInfo info : sortedMods) {
-            loadMod(info, modClassLoader);
+            try {
+                loadMod(info, modClassLoader);
+            } catch (Throwable failure) {
+                // One broken mod should not stop Minecraft from starting.
+                System.err.println("HitBoy could not load " + info.name + " (" + info.jarName + "): " + failure);
+                failure.printStackTrace();
+            }
         }
 
         System.out.println("Loaded " + loadedMods.size() + " mods");

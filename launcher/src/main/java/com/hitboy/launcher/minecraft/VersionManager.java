@@ -77,16 +77,31 @@ public class VersionManager {
         idxFile.getParentFile().mkdirs();
         if (!idxFile.exists()) download(assetIndexUrl, idxFile);
         JsonObject idx = JsonParser.parseString(new String(Files.readAllBytes(idxFile.toPath()))).getAsJsonObject().getAsJsonObject("objects");
+        java.util.List<String[]> missing = new java.util.ArrayList<>();
         for (String key : idx.keySet()) {
-            JsonObject o = idx.getAsJsonObject(key);
-            String hash = o.get("hash").getAsString();
-            String sub = hash.substring(0,2);
+            String hash = idx.getAsJsonObject(key).get("hash").getAsString();
+            String sub = hash.substring(0, 2);
             File out = new File(baseDir(), "assets" + File.separator + "objects" + File.separator + sub + File.separator + hash);
-            if (!out.exists()) {
-                out.getParentFile().mkdirs();
-                String url = "https://resources.download.minecraft.net/" + sub + "/" + hash;
-                download(url, out);
-            }
+            if (!out.exists()) missing.add(new String[] {"https://resources.download.minecraft.net/" + sub + "/" + hash, out.getPath()});
+        }
+        if (missing.isEmpty()) return;
+        log.accept("Downloading " + missing.size() + " assets...");
+        // Thousands of small files: download in parallel, otherwise a first launch takes many minutes.
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(16);
+        java.util.concurrent.atomic.AtomicInteger done = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<java.util.concurrent.Future<?>> tasks = new java.util.ArrayList<>();
+        for (String[] asset : missing) {
+            tasks.add(pool.submit(() -> {
+                download(asset[0], new File(asset[1]));
+                int count = done.incrementAndGet();
+                if (count % 500 == 0 || count == missing.size()) log.accept("  assets " + count + "/" + missing.size());
+                return null;
+            }));
+        }
+        try {
+            for (java.util.concurrent.Future<?> task : tasks) task.get();
+        } finally {
+            pool.shutdownNow();
         }
     }
 
@@ -153,7 +168,7 @@ public class VersionManager {
         c.setRequestProperty("User-Agent", "HitBoysModLoader/1.0");
         try (InputStream in = c.getInputStream()) { return JsonParser.parseString(new String(in.readAllBytes())).getAsJsonObject(); }
     }
-    private synchronized void download(String url, File out) throws Exception {
+    private void download(String url, File out) throws Exception {
         if (out.isFile() && out.length() > 0) {
             return;
         }
