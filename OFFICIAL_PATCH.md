@@ -1,53 +1,54 @@
-# HitBoy Official Patch profile
+# HitBoy Profile Patcher
 
-The **1.21.11-HitBoy** profile is a local profile for the official Minecraft
-Launcher. It inherits the official Minecraft 1.21.11 release instead of
-copying or modifying its client JAR, libraries, assets, worlds, or account
-data. Like Fabric, it adds a loader library to an inherited profile rather
-than patching Mojang's client JAR on disk. At startup the HitBoy patch JAR adds
-HitBoy's agent and creates a dedicated HitBoy home with native mods at:
+`hitboy-patcher.exe` installs HitBoy into your normal `.minecraft` folder the
+same way the Fabric installer does. It adds a `<version>-HitBoy` installation
+to the official Minecraft Launcher that inherits the vanilla release instead of
+copying or modifying Mojang's client JAR, libraries, assets, worlds, or account
+data.
 
-```text
-%APPDATA%\.minecraft\.hitboys-modloader\
-%APPDATA%\.minecraft\.hitboys-modloader\native_mods\
-```
+Supported versions: **26.3**, **26.2**, **1.21.11**, **1.20.1**, **1.16.5**.
 
 ## Install
 
-1. Start Minecraft 1.21.11 once in the official Minecraft Launcher so the
-   base version is installed.
-2. Open HitBoy's Mod Loader and choose **Settings** >
-   **Install Official Launcher Profile**, or run:
+1. Run the official Minecraft Launcher at least once so `.minecraft` and
+   `launcher_profiles.json` exist.
+2. Open `hitboy-patcher.exe`, choose a Minecraft version, check the install
+   location (default `%APPDATA%\.minecraft`), and click **Install**. Or run:
 
    ```powershell
    java -jar .\dist\hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar `
-     --install-official-patch
+     --install-official-patch --version 26.3
    ```
 
-3. Restart the official Minecraft Launcher if it is already open, select
-   **1.21.11-HitBoy**, and launch it.
+   Add `--official-game-dir <dir>` to target a different `.minecraft` folder.
 
-The official Launcher remains responsible for Microsoft sign-in and passes its
-authenticated session to Minecraft. This means the profile can join normal
-online servers when the server accepts its client-side mods.
+3. Restart the official Minecraft Launcher, select the **Minecraft &lt;version&gt;/HitBoy's Mod Loader**
+   installation, and play. The launcher downloads the vanilla base version
+   automatically if it is not installed yet.
 
-The installed patch JAR is:
+## What gets written
+
+Like Fabric, the patcher only adds files:
 
 ```text
-%APPDATA%\.minecraft\libraries\com\hitboy\hitboys-mod-loader-patch\1.0.0-SNAPSHOT\hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar
+.minecraft\versions\<version>-HitBoy\<version>-HitBoy.json   inherited version profile
+.minecraft\versions\<version>-HitBoy\<version>-HitBoy.jar    empty placeholder JAR
+.minecraft\libraries\com\hitboy\hitboys-mod-loader-patch\1.0.0-SNAPSHOT\hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar
+.minecraft\launcher_profiles.json                              "Minecraft <version>/HitBoy's Mod Loader" entry
+.minecraft\mods\                                               HitBoy mods
+.minecraft\.hitboys-modloader\                                 HitBoy data
 ```
+
+The version profile does not override the Java runtime, so the official
+Launcher uses the one the vanilla version asks for (Java 21 for 1.21.x,
+Java 25 for 26.x).
 
 ## Limits
 
 - HitBoy does not bypass Microsoft authentication, server authentication, or
-  server-side mod requirements.
-- Servers may reject any modified client, and anti-cheat/server rules still
-  apply.
-- The profile currently targets Minecraft 1.21.11 and requires Java 21+.
-- The standalone launcher only offers versions with verified native hooks:
-  Minecraft 1.21.11 and 1.20.1. Other versions must be mapped and tested
-  before being added.
-- Removing `versions\1.21.11-HitBoy\` and
-  `libraries\com\hitboy\hitboys-mod-loader-patch\` from the official Minecraft
-  directory removes the profile. Do not delete any other files from the
-  official game directory.
+  server-side mod requirements. Servers may reject any modified client, and
+  anti-cheat/server rules still apply.
+- To uninstall, delete the **Minecraft &lt;version&gt;/HitBoy's Mod Loader** installation in the
+  official Launcher, then remove `versions\<version>-HitBoy\` and
+  `libraries\com\hitboy\hitboys-mod-loader-patch\`. Do not delete any other
+  files from the game directory.

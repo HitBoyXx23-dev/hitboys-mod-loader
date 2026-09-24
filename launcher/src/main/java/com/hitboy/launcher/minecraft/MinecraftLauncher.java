@@ -223,7 +223,7 @@ public class MinecraftLauncher {
             return configuredJava;
         }
 
-        int requiredFeature = requiresJava21(minecraftVersion) ? 21 : 17;
+        int requiredFeature = requiredJavaFeature(minecraftVersion);
         int pathFeature = tryReadJavaFeature("java");
         if (pathFeature >= requiredFeature) {
             return "java";
@@ -291,7 +291,7 @@ public class MinecraftLauncher {
 
     private void verifyJavaRuntime(String javaExe, String minecraftVersion, Consumer<String> log) throws IOException {
         int javaFeature = readJavaFeature(javaExe);
-        int requiredFeature = requiresJava21(minecraftVersion) ? 21 : 17;
+        int requiredFeature = requiredJavaFeature(minecraftVersion);
         if (javaFeature < requiredFeature) {
             throw new IOException("Minecraft " + minecraftVersion + " requires Java " + requiredFeature
                 + "+; selected Java runtime is " + javaFeature + ". Set HITBOY_JAVA to a compatible executable.");
@@ -320,18 +320,21 @@ public class MinecraftLauncher {
         return Integer.parseInt(matcher.group(1));
     }
 
-    private boolean requiresJava21(String version) {
+    private int requiredJavaFeature(String version) {
         String[] parts = version.split("\\.");
         if (parts.length < 2) {
-            return false;
+            return 17;
         }
         try {
             int major = Integer.parseInt(parts[0]);
             int minor = Integer.parseInt(parts[1]);
             int patch = parts.length > 2 ? Integer.parseInt(parts[2].replaceAll("\\D.*$", "")) : 0;
-            return major > 1 || (major == 1 && (minor > 20 || (minor == 20 && patch >= 5)));
+            if (major >= 26) {
+                return 25;
+            }
+            return major > 1 || (major == 1 && (minor > 20 || (minor == 20 && patch >= 5))) ? 21 : 17;
         } catch (NumberFormatException e) {
-            return false;
+            return 17;
         }
     }
 }

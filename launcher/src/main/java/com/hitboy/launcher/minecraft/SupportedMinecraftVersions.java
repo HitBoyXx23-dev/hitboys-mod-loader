@@ -4,7 +4,7 @@ import java.util.List;
 
 public final class SupportedMinecraftVersions {
     public static final String DEFAULT_VERSION = "1.21.11";
-    private static final List<String> VERSIONS = List.of("26.2", DEFAULT_VERSION, "1.20.1", "1.16.5");
+    private static final List<String> VERSIONS = List.of("26.3", "26.2", DEFAULT_VERSION, "1.20.1", "1.16.5");
 
     private SupportedMinecraftVersions() {
     }

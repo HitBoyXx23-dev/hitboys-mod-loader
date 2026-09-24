@@ -59,6 +59,36 @@ public final class InstanceVerifier {
         if (!result.getReport().isCompatible()) throw new CompatibilityException("HitBoy compatibility verification failed:" + System.lineSeparator() + result.getReport().format());
     }
 
+    /**
+     * Like {@link #requireCompatible(Path)}, but for a mods folder shared with other loaders (the official
+     * Launcher's .minecraft\mods): Fabric, Forge, and NeoForge JARs are skipped with a warning instead of
+     * aborting the game, and only HitBoy mods must verify cleanly.
+     */
+    public void requireCompatibleHitBoyMods(Path modsDirectory) throws IOException, CompatibilityException {
+        Result result = verify(modsDirectory);
+        java.util.Set<String> hitBoyJars = new java.util.HashSet<>();
+        java.util.Set<String> hitBoyIds = new java.util.HashSet<>();
+        for (ModInspector.Inspection inspection : result.getInspections()) {
+            HitBoyModDescriptor descriptor = inspection.getDescriptor();
+            String jarName = descriptor.getSourceJar().getFileName().toString();
+            if (descriptor.getSourceLoader() == SourceLoader.HITBOY) {
+                hitBoyJars.add(jarName);
+                hitBoyIds.add(descriptor.getId());
+            } else {
+                System.out.println("Skipping " + descriptor.getSourceLoader() + " mod (not a HitBoy mod): " + jarName);
+            }
+        }
+        CompatibilityReport hitBoyReport = new CompatibilityReport();
+        for (CompatibilityIssue issue : result.getReport().getIssues()) {
+            if (issue.getSeverity() != CompatibilityIssue.Severity.ERROR || "PORT_REQUIRED".equals(issue.getCode())) continue;
+            if (hitBoyJars.stream().anyMatch(jar -> issue.getMessage().contains(jar))
+                || hitBoyIds.stream().anyMatch(id -> issue.getMessage().startsWith(id + " requires "))) {
+                hitBoyReport.add(issue.getSeverity(), issue.getCode(), issue.getMessage());
+            }
+        }
+        if (!hitBoyReport.isCompatible()) throw new CompatibilityException("HitBoy compatibility verification failed:" + System.lineSeparator() + hitBoyReport.format());
+    }
+
     private boolean isPlatformDependency(String id) {
         return id.equalsIgnoreCase("minecraft") || id.equalsIgnoreCase("java") || id.equalsIgnoreCase("fabricloader") || id.equalsIgnoreCase("forge") || id.equalsIgnoreCase("neoforge");
     }

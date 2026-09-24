@@ -49,9 +49,9 @@ not provide Fabric, Forge, or NeoForge compatibility.
 
 - Do not modify Mojang client JARs or distribute modified Minecraft files.
   HitBoy patches classes only in the running JVM.
-- Use the official `1.21.11-HitBoy` profile for authenticated online play.
-- Do not use the standalone offline launcher for servers requiring a Microsoft
-  account.
+- The standalone launchers are offline only. To play through the official
+  Minecraft Launcher, install a `<version>-HitBoy` profile with
+  `hitboy-patcher.exe`.
 - Back up worlds before testing a new Minecraft version or third-party native
   mod.
 - Treat native mod JARs as executable code and install them only from trusted

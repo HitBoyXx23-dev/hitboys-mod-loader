@@ -134,7 +134,10 @@ fn run_port(source: &PathBuf, output: &str) -> String {
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 560.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 560.0]).with_icon(
+            eframe::icon_data::from_png_bytes(include_bytes!("../../HitBoy.png"))
+                .expect("embedded HitBoy logo must be a valid PNG")
+        ),
         ..Default::default()
     };
     eframe::run_native("HitBoy Mixed Mod Compatibility", options, Box::new(|_| Box::new(MixedApp::new())))

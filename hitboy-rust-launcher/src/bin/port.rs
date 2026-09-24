@@ -126,7 +126,10 @@ fn run_port(source: &str, output: &str) -> String {
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 520.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([760.0, 520.0]).with_icon(
+            eframe::icon_data::from_png_bytes(include_bytes!("../../HitBoy.png"))
+                .expect("embedded HitBoy logo must be a valid PNG")
+        ),
         ..Default::default()
     };
     eframe::run_native("HitBoy Mod Porter", options, Box::new(|_| Box::new(PortApp::new())))

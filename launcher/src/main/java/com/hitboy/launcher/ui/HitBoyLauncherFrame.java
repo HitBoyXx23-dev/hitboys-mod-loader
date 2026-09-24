@@ -135,7 +135,7 @@ public class HitBoyLauncherFrame extends JFrame {
         left.setBackground(new Color(24,24,32)); left.setBorder(new EmptyBorder(12,12,12,12));
         GridBagConstraints c = new GridBagConstraints(); c.insets=new Insets(6,6,6,6); c.fill=GridBagConstraints.HORIZONTAL; c.weightx=1;
         nameField = new JTextField("Notch"); nameField.setBackground(new Color(16,16,20)); nameField.setForeground(Color.WHITE); nameField.setCaretColor(Color.WHITE);
-        versionBox = new JComboBox<>(new String[]{"1.21.11", "1.20.1", "1.16.5"});
+        versionBox = new JComboBox<>(com.hitboy.launcher.minecraft.SupportedMinecraftVersions.all().toArray(new String[0]));
         versionBox.setSelectedItem("1.21.11");
         JButton dlBtn = new JButton("Download / Verify");
         c.gridx=0; c.gridy=0; left.add(new JLabel("Username (offline):"){{setForeground(Color.WHITE);}}, c);
@@ -203,23 +203,7 @@ public class HitBoyLauncherFrame extends JFrame {
         c.gridy=1; form.add(ramSlider, c);
         c.gridy=2; form.add(new JLabel("Java Executable:"){{setForeground(Color.WHITE);}}, c);
         c.gridy=3; form.add(javaField, c);
-        c.gridy=4; form.add(new JLabel("<html><small>Uses <code>java</code> from PATH by default.<br/>Minecraft 1.16.5 works with Java 8-16; 1.20.1 requires Java 17+; 1.21.11 requires Java 21+.</small></html>"){{setForeground(new Color(140,140,160));}}, c);
-        JButton installOfficialProfile = new JButton("Install Official Launcher Profile");
-        c.gridy=5; form.add(installOfficialProfile, c);
-        installOfficialProfile.addActionListener(e -> new Thread(() -> {
-            try {
-                File loaderJar = com.hitboy.launcher.LauncherPaths.findLoaderJar(HitBoyLauncherFrame.class);
-                File officialGameDirectory =
-                    com.hitboy.launcher.minecraft.OfficialPatchInstaller.defaultOfficialGameDirectory();
-                com.hitboy.launcher.minecraft.OfficialPatchInstaller.install(
-                    officialGameDirectory,
-                    loaderJar
-                );
-                log("Installed official profile 1.21.11-HitBoy in " + officialGameDirectory);
-            } catch (Exception ex) {
-                log("Official profile install failed: " + ex.getMessage());
-            }
-        }).start());
+        c.gridy=4; form.add(new JLabel("<html><small>Uses <code>java</code> from PATH by default.<br/>Minecraft 1.16.5 works with Java 8-16; 1.20.1 requires Java 17+; 1.21.11 requires Java 21+; 26.x requires Java 25+.<br/>This launcher is offline only. Use HitBoy Profile Patcher to install into .minecraft.</small></html>"){{setForeground(new Color(140,140,160));}}, c);
         p.add(form, BorderLayout.CENTER);
         return p;
     }

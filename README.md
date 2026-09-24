@@ -32,29 +32,31 @@ from `native_mods`, and provides a small stable API in `com.hitboy.loader`.
 
 | Path | Use | Account support |
 |---|---|---|
-| `dist\hitboys-mod-loader.exe` | Standalone HitBoy launcher, with its own game directory. | Offline username or Microsoft sign-in through the official Launcher button. |
-| `1.21.11-HitBoy` official profile | Patches the official Minecraft Launcher launch at process start. | Uses the signed-in Microsoft account from the official Launcher. |
+| `dist\hitboys-mod-loader.exe` | Standalone HitBoy launcher, with its own game directory. | Offline username only. |
+| `dist\hitboy-patcher.exe` | Installs a `<version>-HitBoy` profile into `.minecraft`, like the Fabric installer. | Whatever account the official Minecraft Launcher is signed in with. |
 
-The official profile is the appropriate route for legitimate online play. It
-does not bypass Microsoft authentication, server rules, server-side mod
-requirements, or anti-cheat.
+The standalone launchers no longer offer Microsoft sign-in or online play.
+To play through the official Minecraft Launcher, install a profile with the
+patcher. It does not bypass Microsoft authentication, server rules,
+server-side mod requirements, or anti-cheat.
 
-Like Fabric, the official profile does not edit Mojang's client JAR. It creates
-an inherited `1.21.11-HitBoy` version profile and adds
+Like Fabric, the patcher does not edit Mojang's client JAR. It creates an
+inherited `<version>-HitBoy` version profile, an empty placeholder JAR, a
+`launcher_profiles.json` entry, and adds
 `hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar` as a local library. The patch JAR
 starts HitBoy's bootstrap and Java agent before delegating to Minecraft's
 official main class.
 
 ## Quick start
 
-1. Use Java 21 or newer for Minecraft 1.21.11.
+1. Use Java 21 or newer for Minecraft 1.21.11, and Java 25 or newer for 26.x.
 2. Start `dist\HitBoysModLoader.exe`.
 3. The standalone profile is stored in
    `%USERPROFILE%\.hitboys-modloader`.
 4. Put native mod JARs in
    `%USERPROFILE%\.hitboys-modloader\native_mods`.
 
-For the official Launcher profile, follow [OFFICIAL_PATCH.md](OFFICIAL_PATCH.md).
+For the official Launcher profile (Profile Patcher), follow [OFFICIAL_PATCH.md](OFFICIAL_PATCH.md).
 It creates `%APPDATA%\.minecraft\.hitboys-modloader\` for HitBoy-owned data
 and native mods while leaving the official client JAR unchanged.
 
@@ -93,7 +95,7 @@ Launcher's Java-agent/bootstrap library.
 
 ## Supported scope and limits
 
-- Minecraft **1.21.11** is the default target; **1.20.1** and **1.16.5** are
+- Minecraft **1.21.11** is the default target; **26.3**, **26.2**, **1.20.1**, and **1.16.5** are
   also selectable, each with dedicated, mapping-verified hooks (see
   `native_mods/BUNDLED_MODS.md`).
 - Minecraft **1.8.9** and **1.12.2** are not yet supported: Mojang does not

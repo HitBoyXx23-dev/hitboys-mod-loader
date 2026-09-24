@@ -93,7 +93,7 @@ public class HitBoyLauncher {
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(6,6,6,6); c.fill = GridBagConstraints.HORIZONTAL;
 
-        JComboBox<String> verBox = new JComboBox<>(new String[]{"1.21.11", "1.20.1", "1.16.5"});
+        JComboBox<String> verBox = new JComboBox<>(com.hitboy.launcher.minecraft.SupportedMinecraftVersions.all().toArray(new String[0]));
         verBox.setSelectedItem("1.21.11");
         JTextField dirField = new JTextField(NavigationContext.defaultGameDirectory());
         JTextField modsField = new JTextField(dirField.getText() + File.separator + "native_mods");
@@ -197,11 +197,11 @@ public class HitBoyLauncher {
         System.out.println("       HitBoysModLoader.exe inspect <mod.jar>");
         System.out.println("       HitBoysModLoader.exe verify <instance-or-mods-directory>");
         System.out.println("       HitBoysModLoader.exe port <mod.jar> [--minecraft <version>] [--output <directory>]");
-        System.out.println("  --version <ver>   Verified Minecraft version (1.21.11, 1.20.1, or 1.16.5; default 1.21.11)");
+        System.out.println("  --version <ver>   Verified Minecraft version (" + com.hitboy.launcher.minecraft.SupportedMinecraftVersions.displayList() + "; default 1.21.11)");
         System.out.println("  --game-dir <dir>  Game directory");
         System.out.println("  --mods-dir <dir>  Mods directory");
         System.out.println("  --mappings <file> Mojang mappings");
-        System.out.println("  --install-official-patch  Install the 1.21.11-HitBoy profile for the official Launcher");
+        System.out.println("  --install-official-patch  Install a <version>-HitBoy profile into .minecraft (like the Fabric installer)");
         System.out.println("  --official-game-dir <dir> Official Minecraft directory (default: %APPDATA%\\.minecraft)");
         System.out.println("No args = GUI mode (persistent window)");
     }
@@ -215,10 +215,10 @@ public class HitBoyLauncher {
             com.hitboy.launcher.minecraft.OfficialPatchInstaller.install(
                 gameDirectory, loaderJar, minecraftVersion, mixedCompatibility
             );
-            System.out.println("Installed HitBoy official profile \"" + minecraftVersion + "-HitBoy\" in " + gameDirectory + ".");
-            System.out.println("Select it in the official Minecraft Launcher; it uses your signed-in Microsoft account.");
+            System.out.println("Installed \"" + minecraftVersion + "-HitBoy\" in " + gameDirectory + ".");
+            System.out.println("Restart the official Minecraft Launcher and select the \"" + com.hitboy.launcher.minecraft.OfficialPatchInstaller.profileName(minecraftVersion) + "\" installation.");
         } catch (Exception e) {
-            System.err.println("Could not install the official HitBoy profile: " + e.getMessage());
+            System.err.println("Could not install the HitBoy profile: " + e.getMessage());
             System.exit(1);
         }
     }

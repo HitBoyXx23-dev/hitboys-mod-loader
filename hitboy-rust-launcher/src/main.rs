@@ -122,41 +122,6 @@ fn launcher_command(
     command
 }
 
-fn official_patch_command(java: &Path, launcher_jar: &Path) -> Command {
-    let mut command = Command::new(java);
-    command
-        .arg("-jar")
-        .arg(launcher_jar)
-        .arg("--install-official-patch");
-    command
-}
-
-fn open_java_launcher() -> Result<String, String> {
-    let mut candidates = Vec::new();
-    if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
-        candidates.push(PathBuf::from(program_files_x86).join("Minecraft Launcher").join("MinecraftLauncher.exe"));
-    }
-    if let Some(program_files) = std::env::var_os("ProgramFiles") {
-        candidates.push(PathBuf::from(program_files).join("Minecraft Launcher").join("MinecraftLauncher.exe"));
-    }
-    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-        candidates.push(PathBuf::from(local_app_data).join("Programs").join("Minecraft Launcher").join("MinecraftLauncher.exe"));
-    }
-    for candidate in candidates {
-        if candidate.is_file() {
-            Command::new(&candidate)
-                .spawn()
-                .map_err(|error| format!("Could not open {}: {}", candidate.display(), error))?;
-            return Ok("Opened the official Minecraft Launcher. Select Java Edition and the HitBoy profile.".to_string());
-        }
-    }
-    Command::new("explorer.exe")
-        .arg("https://www.minecraft.net/download")
-        .spawn()
-        .map_err(|error| format!("Could not open the official Minecraft download page: {}", error))?;
-    Ok("The Java-capable official Minecraft Launcher was not found. Opened Mojang's official download page instead; install it, sign in, and then use this button again.".to_string())
-}
-
 impl HitBoysModLoaderApp {
     fn new() -> Self {
         let mixed_compatibility = mixed_compatibility_mode();
@@ -170,7 +135,7 @@ impl HitBoysModLoaderApp {
             log: if mixed_compatibility {
                 "HitBoy's Mixed Compatibility Mod Loader v1.0.0\nReady. Native and converted mods are managed together.\n".to_string()
             } else {
-                "HitBoy's Mod Loader v1.0.0\nReady. Meteor Client HitBoy Edition installs automatically.\n".to_string()
+                "HitBoy's Mod Loader v1.0.0\nReady. Put HitBoy mods in native_mods; nothing is installed automatically.\n".to_string()
             },
             tab: Tab::Home,
             launching: false,
@@ -345,16 +310,9 @@ impl eframe::App for HitBoysModLoaderApp {
                         cols[0].group(|ui| {
                             ui.label("Username (offline):");
                             ui.text_edit_singleline(&mut self.username);
-                            if ui.button("Microsoft Login / Online Play").clicked() {
-                                match open_java_launcher() {
-                                    Ok(message) => self.log += &format!("{}\n", message),
-                                    Err(error) => self.log += &format!("{}\n", error),
-                                }
-                            }
-                            ui.label(egui::RichText::new("Online authentication is handled securely by the official Minecraft Launcher.").small().color(egui::Color32::GRAY));
                             ui.label("Version:");
                             egui::ComboBox::from_id_source("ver").selected_text(&self.version).show_ui(ui, |ui| {
-                                for v in ["26.2", "1.21.11", "1.20.1", "1.16.5"] {
+                                for v in ["26.3", "26.2", "1.21.11", "1.20.1", "1.16.5"] {
                                     ui.selectable_value(&mut self.version, v.to_string(), v);
                                 }
                             });
@@ -452,52 +410,8 @@ let mut cmd = launcher_command(&java, &launcher_jar, &ver, &game_dir, None, true
                         ui.add(egui::Slider::new(&mut self.ram_mb, 512..=8192).text("MB"));
                         ui.label("Game Directory:");
                         ui.text_edit_singleline(&mut self.game_dir);
-                        ui.label(egui::RichText::new("Minecraft 1.21.11 needs Java 21+. The Java launcher uses PATH when compatible, otherwise checks installed JDKs. Set HITBOY_JAVA to override.").small().color(egui::Color32::GRAY));
-                        if ui.button("Install HitBoy Online Profile").clicked() {
-                            let (tx, rx) = channel();
-                            self.log_rx = Some(rx);
-                            self.log += "Installing the 1.21.11-HitBoy profile for the official Minecraft Launcher...\n";
-                            std::thread::spawn(move || {
-                                let launcher_jar = match launcher_jar() {
-                                    Ok(path) => path,
-                                    Err(error) => {
-                                        let _ = tx.send(format!("Could not prepare embedded launcher: {}", error));
-                                        return;
-                                    }
-                                };
-                                let java = match java_executable() {
-                                    Ok(path) => path,
-                                    Err(error) => {
-                                        let _ = tx.send(error);
-                                        return;
-                                    }
-                                };
-                                let mut cmd = official_patch_command(&java, &launcher_jar);
-                                let _ = tx.send(format!("Starting Java launcher: {:?}", cmd));
-                                cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-                                no_window(&mut cmd);
-                                let mut child = match cmd.spawn() {
-                                    Ok(child) => child,
-                                    Err(error) => {
-                                        let _ = tx.send(format!("Failed to start the installer: {}", error));
-                                        return;
-                                    }
-                                };
-                                let stdout = child.stdout.take().unwrap();
-                                let stderr = child.stderr.take().unwrap();
-                                let stderr_tx = tx.clone();
-                                std::thread::spawn(move || {
-                                    for line in BufReader::new(stderr).lines().flatten() {
-                                        let _ = stderr_tx.send(line);
-                                    }
-                                });
-                                for line in BufReader::new(stdout).lines().flatten() {
-                                    let _ = tx.send(line);
-                                }
-                                let _ = child.wait();
-                            });
-                        }
-                        ui.label(egui::RichText::new("This adds a 1.21.11-HitBoy profile to the official Launcher, which supplies your Microsoft account for online play.").small().color(egui::Color32::GRAY));
+                        ui.label(egui::RichText::new("Minecraft 1.21.11 needs Java 21+; 26.x needs Java 25+. The Java launcher uses PATH when compatible, otherwise checks installed JDKs. Set HITBOY_JAVA to override.").small().color(egui::Color32::GRAY));
+                        ui.label(egui::RichText::new("This launcher is offline only. To add HitBoy to the official Minecraft Launcher's .minecraft folder, use HitBoy Profile Patcher.").small().color(egui::Color32::GRAY));
                     });
                 }
             }
@@ -595,26 +509,5 @@ mod tests {
         assert_eq!(packaged_app_directory_at(&root), Some(root.clone()));
 
         fs::remove_dir_all(root).unwrap();
-    }
-
-    #[test]
-    fn official_patch_command_keeps_java_agent_ownership_in_java_launcher() {
-        let command = official_patch_command(
-            Path::new("java"),
-            Path::new("hitboys-mod-loader-launcher.jar"),
-        );
-        let arguments: Vec<_> = command.get_args().collect();
-        assert_eq!(
-            arguments,
-            [
-                "-jar",
-                "hitboys-mod-loader-launcher.jar",
-                "--install-official-patch",
-            ]
-            .iter()
-            .map(std::ffi::OsStr::new)
-            .collect::<Vec<_>>()
-        );
-        assert!(!arguments.iter().any(|argument| argument == &std::ffi::OsStr::new("-javaagent")));
     }
 }

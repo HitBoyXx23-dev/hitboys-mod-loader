@@ -18,6 +18,30 @@ public class GameAgent {
         instrumentation.addTransformer(transformer);
     }
 
+    /**
+     * The official Minecraft Launcher only puts its own libraries on the classpath, so enabled HitBoy mod
+     * JARs are appended here; mixin configs and mod classes must be visible to the game class loader.
+     */
+    public static synchronized void appendHitBoyModsToClasspath(Path modsDirectory) {
+        if (instrumentation == null || !Files.isDirectory(modsDirectory)) return;
+        String classPath = System.getProperty("java.class.path", "");
+        try (java.nio.file.DirectoryStream<Path> jars = Files.newDirectoryStream(modsDirectory, "*.jar")) {
+            for (Path jar : jars) {
+                String stem = jar.getFileName().toString().replaceFirst("\\.jar$", "");
+                if (Files.exists(modsDirectory.resolve(stem + ".disabled"))) continue;
+                if (classPath.contains(jar.toAbsolutePath().toString())) continue;
+                JarFile file = new JarFile(jar.toFile());
+                if (file.getJarEntry("hitboy.json") == null) {
+                    file.close();
+                    continue;
+                }
+                instrumentation.appendToSystemClassLoaderSearch(file);
+            }
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("Could not add HitBoy mods from " + modsDirectory + " to the classpath", exception);
+        }
+    }
+
     public static synchronized void publishGeneratedClass(String internalName, byte[] bytes) {
         if (instrumentation == null || bytes == null || bytes.length == 0) return;
         try {

@@ -32,12 +32,6 @@
                     <exclude>bundled_mods/*.jar</exclude>
                 </excludes>
             </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>bundled_mods/meteor-client-hitboy-edition-1.0.0.jar</include>
-                </includes>
-            </resource>
         </resources>
         <plugins>
             <plugin>

@@ -39,9 +39,9 @@ public class NativeLoader {
             }
         }
         if (!md.exists()) md.mkdirs();
-        installBundledMeteor(md);
         System.out.println("Scanning mods: " + modsDir + " exists=" + md.exists());
-        new InstanceVerifier().requireCompatible(md.toPath());
+        new InstanceVerifier().requireCompatibleHitBoyMods(md.toPath());
+        GameAgent.appendHitBoyModsToClasspath(md.toPath());
         OptionalAccessWidenerRuntime.initialize(md.toPath());
         OptionalMixinRuntime.initialize(md.toPath());
         modManager.scanAndLoadMods(modsDir);
@@ -66,21 +66,6 @@ public class NativeLoader {
         testEventBus(eventBus);
     }
 
-    private static void installBundledMeteor(File modsDirectory) throws IOException {
-        String fileName = "meteor-client-hitboy-edition-1.0.0.jar";
-        File destination = new File(modsDirectory, fileName);
-        if (destination.isFile()) {
-            return;
-        }
-        try (InputStream input = NativeLoader.class.getResourceAsStream("/bundled_mods/" + fileName)) {
-            if (input == null) {
-                throw new FileNotFoundException("Bundled Meteor Client is missing: " + fileName);
-            }
-            Files.copy(input, destination.toPath());
-        }
-        System.out.println("Installed bundled mod: " + fileName);
-    }
-    
     private static void testEventBus(EventBus bus) {
         bus.post(new Object());
         System.out.println("Test event posted - run via MinecraftLauncher for real game");

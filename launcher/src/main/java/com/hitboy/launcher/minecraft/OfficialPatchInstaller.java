@@ -1,31 +1,47 @@
 package com.hitboy.launcher.minecraft;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.util.Base64;
 
 /**
- * Creates a local version profile consumed by the official Minecraft Launcher.
+ * Installs HitBoy into an official {@code .minecraft} directory the same way the Fabric installer does:
+ * an inherited version JSON, an empty placeholder client JAR, the loader library, and a
+ * {@code launcher_profiles.json} entry. Mojang's client JAR is never modified.
  */
 public final class OfficialPatchInstaller {
-    public static final String SUPPORTED_VERSION = "1.21.11";
+    public static final String SUPPORTED_VERSION = SupportedMinecraftVersions.DEFAULT_VERSION;
     public static final String PATCHED_VERSION_ID = SUPPORTED_VERSION + "-HitBoy";
     public static final String HITBOY_HOME_DIRECTORY = ".hitboys-modloader";
     private static final String PATCH_ARTIFACT = "hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar";
     private static final String PATCH_LIBRARY_PATH =
         "com/hitboy/hitboys-mod-loader-patch/1.0.0-SNAPSHOT/" + PATCH_ARTIFACT;
-    private static final String[] BUNDLED_MODS = {
-        "meteor-client-hitboy-edition-1.0.0.jar"
+    private static final String[] LAUNCHER_PROFILE_FILES = {
+        "launcher_profiles.json",
+        "launcher_profiles_microsoft_store.json"
     };
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private OfficialPatchInstaller() {
+    }
+
+    public static String versionId(String minecraftVersion) {
+        return minecraftVersion + "-HitBoy";
+    }
+
+    public static String profileName(String minecraftVersion) {
+        return "Minecraft " + minecraftVersion + "/HitBoy's Mod Loader";
     }
 
     public static File defaultOfficialGameDirectory() {
@@ -46,25 +62,22 @@ public final class OfficialPatchInstaller {
         String minecraftVersion,
         boolean mixedCompatibility
     ) throws IOException {
+        if (!SupportedMinecraftVersions.isSupported(minecraftVersion)) {
+            throw new IOException(
+                "Unsupported Minecraft version " + minecraftVersion + ". Supported: "
+                    + SupportedMinecraftVersions.displayList()
+            );
+        }
         if (loaderJar == null || !loaderJar.isFile()) {
             throw new IOException("HitBoy loader JAR was not found beside the launcher.");
         }
         if (!officialGameDirectory.isDirectory()) {
             throw new IOException(
-                "Official Minecraft directory not found: " + officialGameDirectory
-                    + ". Start Minecraft 1.21.11 once in the official Launcher first."
+                "Minecraft directory not found: " + officialGameDirectory
+                    + ". Run the official Minecraft Launcher once, or choose the correct .minecraft folder."
             );
         }
-        File baseVersion = new File(
-            officialGameDirectory,
-            "versions" + File.separator + minecraftVersion + File.separator + minecraftVersion + ".json"
-        );
-        if (!baseVersion.isFile()) {
-            throw new IOException(
-                "Official Minecraft " + minecraftVersion + " is not installed in " + officialGameDirectory
-                    + ". Start that version once in the official Minecraft Launcher first."
-            );
-        }
+        String versionId = versionId(minecraftVersion);
 
         File library = new File(officialGameDirectory, "libraries" + File.separator
             + PATCH_LIBRARY_PATH.replace('/', File.separatorChar));
@@ -72,62 +85,96 @@ public final class OfficialPatchInstaller {
         Files.copy(loaderJar.toPath(), library.toPath(), StandardCopyOption.REPLACE_EXISTING);
         File hitBoyHome = new File(officialGameDirectory, HITBOY_HOME_DIRECTORY);
         Files.createDirectories(hitBoyHome.toPath());
-        seedBundledMods(officialGameDirectory);
+        Files.createDirectories(new File(officialGameDirectory, "mods").toPath());
         Files.writeString(
             new File(hitBoyHome, "README.txt").toPath(),
             "HitBoy's Mod Loader data directory.\n"
                 + "Native mods belong in the normal .minecraft\\mods folder.\n"
-                + "This directory is created by the " + minecraftVersion + "-HitBoy profile installer.\n"
+                + "This directory is created by the " + versionId + " profile installer.\n"
         );
 
-        File versionDirectory = new File(
-            officialGameDirectory,
-            "versions" + File.separator + minecraftVersion + "-HitBoy"
-        );
+        File versionDirectory = new File(officialGameDirectory, "versions" + File.separator + versionId);
         Files.createDirectories(versionDirectory.toPath());
-        File profile = new File(versionDirectory, minecraftVersion + "-HitBoy.json");
-        try (FileWriter writer = new FileWriter(profile)) {
-            new GsonBuilder().setPrettyPrinting().create().toJson(profileJson(minecraftVersion), writer);
-        }
-
-        File readme = new File(versionDirectory, "HITBOY-OFFICIAL-PATCH.txt");
         Files.writeString(
-            readme.toPath(),
-            "HitBoy's Mod Loader official profile for Minecraft " + minecraftVersion + ".\n"
-                + "Select \"" + minecraftVersion + "-HitBoy\" in the official Minecraft Launcher.\n"
-                + "The official Launcher supplies your Microsoft account session for online play.\n"
+            new File(versionDirectory, versionId + ".json").toPath(),
+            GSON.toJson(profileJson(minecraftVersion, mixedCompatibility))
+        );
+        // Like Fabric: an empty placeholder JAR keeps the launcher from treating the version as broken.
+        // The real client JAR is resolved from the inherited vanilla version.
+        File placeholderJar = new File(versionDirectory, versionId + ".jar");
+        if (!placeholderJar.exists()) {
+            Files.write(placeholderJar.toPath(), new byte[0]);
+        }
+        Files.writeString(
+            new File(versionDirectory, "HITBOY-OFFICIAL-PATCH.txt").toPath(),
+            "HitBoy's Mod Loader profile for Minecraft " + minecraftVersion + ".\n"
+                + "Select \"" + profileName(minecraftVersion) + "\" in the official Minecraft Launcher.\n"
                 + "HitBoy data is loaded from " + hitBoyHome + ".\n"
                 + "HitBoy mods are loaded from " + new File(officialGameDirectory, "mods") + ".\n"
         );
+
+        addLauncherProfile(officialGameDirectory, minecraftVersion);
     }
 
-    private static void seedBundledMods(File officialGameDirectory) throws IOException {
-        File modsDirectory = new File(officialGameDirectory, "mods");
-        Files.createDirectories(modsDirectory.toPath());
-        for (String mod : BUNDLED_MODS) {
-            try (InputStream input = OfficialPatchInstaller.class.getResourceAsStream("/bundled_mods/" + mod)) {
-                if (input == null) {
-                    throw new IOException("Bundled mod is missing from the launcher: " + mod);
-                }
-                File destination = new File(modsDirectory, mod);
-                if (!destination.exists()) {
-                    Files.copy(input, destination.toPath());
-                }
+    private static void addLauncherProfile(File officialGameDirectory, String minecraftVersion) throws IOException {
+        String versionId = versionId(minecraftVersion);
+        String now = Instant.now().toString();
+        boolean found = false;
+        for (String fileName : LAUNCHER_PROFILE_FILES) {
+            File file = new File(officialGameDirectory, fileName);
+            if (!file.isFile()) {
+                continue;
             }
+            found = true;
+            JsonObject root = JsonParser.parseString(
+                Files.readString(file.toPath(), StandardCharsets.UTF_8)
+            ).getAsJsonObject();
+            if (!root.has("profiles") || !root.get("profiles").isJsonObject()) {
+                root.add("profiles", new JsonObject());
+            }
+            JsonObject profiles = root.getAsJsonObject("profiles");
+            JsonObject profile = profiles.has(versionId) && profiles.get(versionId).isJsonObject()
+                ? profiles.getAsJsonObject(versionId)
+                : new JsonObject();
+            profile.addProperty("name", profileName(minecraftVersion));
+            profile.addProperty("type", "custom");
+            profile.addProperty("lastVersionId", versionId);
+            profile.addProperty("icon", launcherIcon());
+            if (!profile.has("created")) {
+                profile.addProperty("created", now);
+            }
+            profile.addProperty("lastUsed", now);
+            profiles.add(versionId, profile);
+            Files.writeString(file.toPath(), GSON.toJson(root), StandardCharsets.UTF_8);
+        }
+        if (!found) {
+            throw new IOException(
+                "launcher_profiles.json was not found in " + officialGameDirectory
+                    + ". Run the official Minecraft Launcher once, then install again."
+            );
         }
     }
 
-    private static JsonObject profileJson(String minecraftVersion) {
+    private static String launcherIcon() {
+        try (InputStream input = OfficialPatchInstaller.class.getResourceAsStream("/icon.png")) {
+            if (input != null) {
+                return "data:image/png;base64," + Base64.getEncoder().encodeToString(input.readAllBytes());
+            }
+        } catch (IOException ignored) {
+        }
+        return "Furnace";
+    }
+
+    static JsonObject profileJson(String minecraftVersion, boolean mixedCompatibility) {
         JsonObject profile = new JsonObject();
-        profile.addProperty("id", minecraftVersion + "-HitBoy");
+        profile.addProperty("id", versionId(minecraftVersion));
         profile.addProperty("inheritsFrom", minecraftVersion);
+        profile.addProperty("releaseTime", Instant.now().toString());
+        profile.addProperty("time", Instant.now().toString());
         profile.addProperty("type", "release");
         profile.addProperty("mainClass", "com.hitboy.loader.NativeLoader");
-
-        JsonObject javaVersion = new JsonObject();
-        javaVersion.addProperty("component", "java-runtime-delta");
-        javaVersion.addProperty("majorVersion", 21);
-        profile.add("javaVersion", javaVersion);
+        // No javaVersion override: like Fabric, the Java runtime is inherited from the vanilla
+        // version (Java 21 for 1.21.x, Java 25 for 26.x).
 
         JsonArray libraries = new JsonArray();
         JsonObject loaderLibrary = new JsonObject();
@@ -143,6 +190,9 @@ public final class OfficialPatchInstaller {
         jvmArguments.add("-Dhitboy.home=${game_directory}/" + HITBOY_HOME_DIRECTORY);
         jvmArguments.add("-Dhitboy.mods-dir=${game_directory}/mods");
         jvmArguments.add("-Dhitboy.mappings=${game_directory}/" + HITBOY_HOME_DIRECTORY + "/mappings.json");
+        if (mixedCompatibility) {
+            jvmArguments.add("-Dhitboy.mixed-compatibility=true");
+        }
         JsonObject arguments = new JsonObject();
         arguments.add("jvm", jvmArguments);
         profile.add("arguments", arguments);
