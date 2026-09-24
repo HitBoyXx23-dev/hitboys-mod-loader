@@ -131,6 +131,9 @@ public class GameAgent {
             @Override
             public byte[] transform(ClassLoader loader, String className, Class<?> c, ProtectionDomain pd, byte[] buf) {
                 if (className == null) return null;
+                if ("org/spongepowered/asm/mixin/transformer/MixinTargetContext".equals(className)) {
+                    return patchMixinSingleLetterTypes(buf);
+                }
                 String dotted = className.replace('/', '.');
                 if (dotted.startsWith("net.minecraft")) {
                     try { return transformMinecraftClass(dotted, buf, loader); } catch (Exception e) { e.printStackTrace(); }
@@ -170,6 +173,36 @@ public class GameAgent {
             }
         });
         System.out.println("HitBoy's Mod Loader transformers registered");
+    }
+
+    /**
+     * Mixin's MixinTargetContext#transformSingleDescriptor treats any one-character type name inside an
+     * array descriptor as a primitive and calls Type.getType on it. Minecraft's own class names include
+     * one-letter classes such as "l", so "[Ll;" crashed while applying Fabric mods' Mixins. Only object
+     * types reach that check (primitives return earlier), so make the length comparison never match.
+     */
+    private static byte[] patchMixinSingleLetterTypes(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        boolean patched = false;
+        for (MethodNode method : node.methods) {
+            if (!method.name.equals("transformSingleDescriptor") || !method.desc.equals("(Ljava/lang/String;Z)Ljava/lang/String;")) continue;
+            for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                if (instruction.getOpcode() != Opcodes.INVOKEVIRTUAL) continue;
+                MethodInsnNode call = (MethodInsnNode) instruction;
+                AbstractInsnNode constant = call.getNext();
+                if (!call.owner.equals("java/lang/String") || !call.name.equals("length") || constant == null
+                    || constant.getOpcode() != Opcodes.ICONST_1 || constant.getNext() == null
+                    || constant.getNext().getOpcode() != Opcodes.IF_ICMPNE) continue;
+                method.instructions.set(constant, new InsnNode(Opcodes.ICONST_M1));
+                patched = true;
+            }
+        }
+        if (!patched) return null;
+        ClassWriter writer = new ClassWriter(0);
+        node.accept(writer);
+        System.out.println("Patched Mixin for one-letter Minecraft class names");
+        return writer.toByteArray();
     }
 
     private static byte[] makeRenderPipelineBuilderAccessible(byte[] bytes) {

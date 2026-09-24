@@ -151,33 +151,33 @@ final class FabricJarRemapper {
 
     private void remapAnnotation(AnnotationNode annotation) {
         if (annotation.values == null) return;
-        boolean plainName = annotation.desc.equals("Lorg/spongepowered/asm/mixin/gen/Accessor;")
-            || annotation.desc.equals("Lorg/spongepowered/asm/mixin/gen/Invoker;");
+        // @Accessor names a field and @Invoker a method; both take a plain name, not a selector.
+        // (Record components share one "comp_" name for the field and its getter, so the kind matters.)
+        char plain = annotation.desc.equals("Lorg/spongepowered/asm/mixin/gen/Accessor;") ? 'f'
+            : annotation.desc.equals("Lorg/spongepowered/asm/mixin/gen/Invoker;") ? 'm' : 0;
         for (int index = 1; index < annotation.values.size(); index += 2) {
-            annotation.values.set(index, remapValue(annotation.values.get(index), plainName));
+            annotation.values.set(index, remapValue(annotation.values.get(index), plain));
         }
     }
 
-    private Object remapValue(Object value, boolean plainName) {
-        if (value instanceof String) return remapString((String) value, plainName);
+    private Object remapValue(Object value, char plain) {
+        if (value instanceof String) return remapString((String) value, plain);
         if (value instanceof AnnotationNode) {
             remapAnnotation((AnnotationNode) value);
             return value;
         }
         if (value instanceof List) {
             List<Object> list = new ArrayList<>();
-            for (Object entry : (List<?>) value) list.add(remapValue(entry, plainName));
+            for (Object entry : (List<?>) value) list.add(remapValue(entry, plain));
             return list;
         }
         return value;
     }
 
-    private String remapString(String value, boolean plainName) {
-        if (plainName) {
-            if (value.startsWith("method_") || value.startsWith("comp_")) return mappings.mapMethodName("", value, "");
-            if (value.startsWith("field_")) return mappings.mapFieldName("", value, "");
-            return value;
-        }
+    private String remapString(String value, char plain) {
+        if (plain == 'f' && (value.startsWith("field_") || value.startsWith("comp_"))) return mappings.mapFieldName("", value, "");
+        if (plain == 'm' && (value.startsWith("method_") || value.startsWith("comp_"))) return mappings.mapMethodName("", value, "");
+        if (plain != 0) return value;
         if (value.startsWith("net.minecraft.class_")) {
             return mappings.remapIntermediaryText(value.replace('.', '/')).replace('/', '.');
         }

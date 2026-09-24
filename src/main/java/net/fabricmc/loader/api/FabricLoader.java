@@ -15,6 +15,8 @@ public interface FabricLoader {
 
     <T> List<T> getEntrypoints(String key, Class<T> type);
 
+    <T> List<net.fabricmc.loader.api.entrypoint.EntrypointContainer<T>> getEntrypointContainers(String key, Class<T> type);
+
     Optional<ModContainer> getModContainer(String id);
 
     Collection<ModContainer> getAllMods();

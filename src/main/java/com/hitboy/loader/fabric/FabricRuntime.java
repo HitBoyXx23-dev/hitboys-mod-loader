@@ -134,7 +134,10 @@ public final class FabricRuntime implements FabricLoader {
             System.err.println("[HitBoy Fabric] Could not clean " + cache + ": " + exception);
         }
         for (Path library : libraries) GameAgent.appendJar(library);
-        GameAgent.registerTransformer(new ClientStartHook(mappings.map("net/minecraft/class_310")));
+        String minecraft = mappings.map("net/minecraft/class_310");
+        // Fabric runs client entrypoints once the session is stored (mods read the signed-in user).
+        String sessionField = mappings.mapFieldName("net/minecraft/class_310", "field_1726", "Lnet/minecraft/class_320;");
+        GameAgent.registerTransformer(new ClientStartHook(minecraft, sessionField, "L" + mappings.map("net/minecraft/class_320") + ";"));
         System.out.println("[HitBoy Fabric] Running " + mods.size() + " Fabric mod(s): " + mods.values());
         return mods.isEmpty() ? null : cache;
     }
@@ -192,7 +195,7 @@ public final class FabricRuntime implements FabricLoader {
     private static String hash(Path jar) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-1");
         digest.update(Files.readAllBytes(jar));
-        digest.update("hitboy-fabric-remap-4".getBytes(StandardCharsets.UTF_8));
+        digest.update("hitboy-fabric-remap-5".getBytes(StandardCharsets.UTF_8));
         StringBuilder text = new StringBuilder();
         for (byte value : digest.digest()) text.append(String.format("%02x", value));
         return text.substring(0, 12);
@@ -222,7 +225,7 @@ public final class FabricRuntime implements FabricLoader {
         for (FabricMod mod : mods.values()) {
             for (String reference : mod.entrypoints(key)) {
                 try {
-                    call.run(type.cast(instantiate(reference)));
+                    call.run(type.cast(instantiate(reference, type)));
                 } catch (Throwable failure) {
                     System.err.println("[HitBoy Fabric] " + mod.getName() + " failed in its \"" + key + "\" entrypoint " + reference + ": " + failure);
                     failure.printStackTrace();
@@ -231,7 +234,11 @@ public final class FabricRuntime implements FabricLoader {
         }
     }
 
-    private static Object instantiate(String reference) throws Exception {
+    /**
+     * Creates an entrypoint the way Fabric does: "pkg.Class" (new instance), "pkg.Class::field" (a
+     * static field), or "pkg.Class::method" (a method adapted to the entrypoint interface).
+     */
+    private static Object instantiate(String reference, Class<?> type) throws Exception {
         String className = reference;
         String member = null;
         int separator = reference.indexOf("::");
@@ -239,23 +246,69 @@ public final class FabricRuntime implements FabricLoader {
             className = reference.substring(0, separator);
             member = reference.substring(separator + 2);
         }
-        Class<?> type = Class.forName(className, true, ClassLoader.getSystemClassLoader());
+        Class<?> owner = Class.forName(className, true, ClassLoader.getSystemClassLoader());
         if (member == null) {
-            var constructor = type.getDeclaredConstructor();
+            var constructor = owner.getDeclaredConstructor();
             constructor.setAccessible(true);
             return constructor.newInstance();
         }
-        var field = type.getDeclaredField(member);
-        field.setAccessible(true);
-        return field.get(null);
+        try {
+            var field = owner.getDeclaredField(member);
+            field.setAccessible(true);
+            return field.get(null);
+        } catch (NoSuchFieldException notAField) {
+            // fall through to a method reference
+        }
+        java.lang.reflect.Method target = null;
+        for (java.lang.reflect.Method method : owner.getDeclaredMethods()) {
+            if (method.getName().equals(member)) {
+                target = method;
+                break;
+            }
+        }
+        if (target == null) throw new NoSuchMethodException(reference);
+        target.setAccessible(true);
+        final java.lang.reflect.Method method = target;
+        final Object receiver = java.lang.reflect.Modifier.isStatic(method.getModifiers()) ? null : instantiate(className, type);
+        return java.lang.reflect.Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, called, arguments) -> {
+            if (called.getDeclaringClass() == Object.class) {
+                switch (called.getName()) {
+                    case "hashCode": return System.identityHashCode(proxy);
+                    case "equals": return proxy == arguments[0];
+                    default: return reference;
+                }
+            }
+            if (called.isDefault()) return java.lang.reflect.InvocationHandler.invokeDefault(proxy, called, arguments);
+            return method.invoke(receiver, arguments);
+        });
     }
 
-    /** Calls {@link #onClientStart()} right after the Minecraft client registers its instance. */
+    private static final class Container<T> implements net.fabricmc.loader.api.entrypoint.EntrypointContainer<T> {
+        private final T entrypoint;
+        private final ModContainer provider;
+        private final String definition;
+
+        Container(T entrypoint, ModContainer provider, String definition) {
+            this.entrypoint = entrypoint;
+            this.provider = provider;
+            this.definition = definition;
+        }
+
+        @Override public T getEntrypoint() { return entrypoint; }
+        @Override public ModContainer getProvider() { return provider; }
+        @Override public String getDefinition() { return definition; }
+    }
+
+    /** Calls {@link #onClientStart()} in the Minecraft client constructor, right after the session is stored. */
     private static final class ClientStartHook implements ClassFileTransformer {
         private final String minecraftClass;
+        private final String sessionField;
+        private final String sessionDescriptor;
 
-        ClientStartHook(String minecraftClass) {
+        ClientStartHook(String minecraftClass, String sessionField, String sessionDescriptor) {
             this.minecraftClass = minecraftClass;
+            this.sessionField = sessionField;
+            this.sessionDescriptor = sessionDescriptor;
         }
 
         @Override
@@ -266,21 +319,29 @@ public final class FabricRuntime implements FabricLoader {
             boolean hooked = false;
             for (MethodNode method : node.methods) {
                 if (!method.name.equals("<init>")) continue;
-                for (AbstractInsnNode instruction : method.instructions.toArray()) {
-                    if (instruction.getOpcode() == Opcodes.PUTSTATIC && ((FieldInsnNode) instruction).owner.equals(minecraftClass)
-                        && ((FieldInsnNode) instruction).desc.equals("L" + minecraftClass + ";")) {
-                        method.instructions.insert(instruction, new MethodInsnNode(Opcodes.INVOKESTATIC,
-                            "com/hitboy/loader/fabric/FabricRuntime", "onClientStart", "()V", false));
-                        hooked = true;
-                        break;
-                    }
-                }
+                AbstractInsnNode after = find(method, Opcodes.PUTFIELD, sessionField, sessionDescriptor);
+                if (after == null) after = find(method, Opcodes.PUTSTATIC, null, "L" + minecraftClass + ";");
+                if (after == null) continue;
+                method.instructions.insert(after, new MethodInsnNode(Opcodes.INVOKESTATIC,
+                    "com/hitboy/loader/fabric/FabricRuntime", "onClientStart", "()V", false));
+                hooked = true;
             }
             if (!hooked) return null;
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             node.accept(writer);
             System.out.println("[HitBoy Fabric] Hooked client start: " + name);
             return writer.toByteArray();
+        }
+
+        private AbstractInsnNode find(MethodNode method, int opcode, String field, String descriptor) {
+            for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                if (instruction.getOpcode() != opcode) continue;
+                FieldInsnNode access = (FieldInsnNode) instruction;
+                if (access.owner.equals(minecraftClass) && access.desc.equals(descriptor) && (field == null || access.name.equals(field))) {
+                    return instruction;
+                }
+            }
+            return null;
         }
     }
 
@@ -292,13 +353,28 @@ public final class FabricRuntime implements FabricLoader {
         for (FabricMod mod : mods.values()) {
             for (String reference : mod.entrypoints(key)) {
                 try {
-                    entrypoints.add(type.cast(instantiate(reference)));
+                    entrypoints.add(type.cast(instantiate(reference, type)));
                 } catch (Exception exception) {
                     System.err.println("[HitBoy Fabric] Could not create entrypoint " + reference + ": " + exception);
                 }
             }
         }
         return entrypoints;
+    }
+
+    @Override
+    public <T> List<net.fabricmc.loader.api.entrypoint.EntrypointContainer<T>> getEntrypointContainers(String key, Class<T> type) {
+        List<net.fabricmc.loader.api.entrypoint.EntrypointContainer<T>> containers = new ArrayList<>();
+        for (FabricMod mod : mods.values()) {
+            for (String reference : mod.entrypoints(key)) {
+                try {
+                    containers.add(new Container<>(type.cast(instantiate(reference, type)), mod, reference));
+                } catch (Exception exception) {
+                    System.err.println("[HitBoy Fabric] Could not create entrypoint " + reference + ": " + exception);
+                }
+            }
+        }
+        return containers;
     }
 
     @Override
