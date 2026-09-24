@@ -72,7 +72,7 @@ public final class CompatibilityCli {
                 }
             }
             output.println("This Fabric mod does not need porting: HitBoy's mixed-compatibility mode runs Fabric mods");
-            output.println("directly on Minecraft 1.21.11 (Mixins, access wideners, and Fabric Loader API included).");
+            output.println("directly on Minecraft 1.21.11, 26.2, and 26.3 (Mixins, access wideners, and Fabric Loader API included).");
             output.println("Put it in the mods folder and start hitboy-mixed-mod-compatibility.exe, or install the");
             output.println("profile with the patcher's \"Mixed Compatibility\" option. Mods that need Fabric API are not supported yet.");
             return 0;

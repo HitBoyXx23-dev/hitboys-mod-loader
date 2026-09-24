@@ -6,9 +6,9 @@ needs it) in the same mods folder as your HitBoy mods.
 
 | | Status |
 |---|---|
-| Fabric mods on Minecraft **1.21.11** | Supported |
+| Fabric mods on Minecraft **1.21.11** | Supported (remapped from Fabric's intermediary names) |
+| Fabric mods on Minecraft **26.3 / 26.2** | Supported (26.x uses Minecraft's real names, so no remapping) |
 | Fabric API | Supported: the real Fabric API JAR runs as ordinary Fabric mods |
-| Fabric mods on Minecraft 26.x | Not yet (they are skipped with a message) |
 | Forge / NeoForge mods | Not yet (they are skipped, never crash the game) |
 
 ## Turning it on
@@ -24,10 +24,20 @@ needs it) in the same mods folder as your HitBoy mods.
 Without mixed mode, Fabric mods in the folder are skipped and HitBoy mods run as
 usual.
 
-## Tested mods (Minecraft 1.21.11)
+## Tested mods
 
 Each set was loaded into a single-player world, and the player joined with no
-Mixin or entrypoint errors:
+Mixin or entrypoint errors.
+
+**Minecraft 26.3:**
+
+| Mods | Versions |
+|---|---|
+| Fabric API | 0.161.0+26.3 (51 modules) |
+| Sodium + Iris | Sodium 0.9.2, Iris 1.11.6 |
+| Lithium | 0.26.1 |
+
+**Minecraft 1.21.11:**
 
 | Mods | Versions |
 |---|---|
@@ -39,7 +49,8 @@ Mixin or entrypoint errors:
 | ImmediatelyFast | 1.14.3 |
 
 Mods must still be compatible **with each other**, exactly as on Fabric. For
-example, Iris 1.10.7 needs **Sodium 0.8.7**. Newer Sodium builds (0.8.13 and
+example, on 1.21.11 Iris 1.10.7 needs **Sodium 0.8.7**, and on 26.3 Iris 1.11.6 pairs
+with **Sodium 0.9.2**. Newer Sodium builds (0.8.13 and
 later) changed a method Iris patches, so that pairing fails on real Fabric too.
 Use the versions a mod's own page lists.
 
@@ -49,7 +60,8 @@ Use the versions a mod's own page lists.
    `META-INF/jars` (Fabric API ships 49 modules this way), keeps the newest copy
    of each mod id, and skips mods whose required dependencies are missing, with a
    message naming the missing mod.
-2. **Remapping.** Fabric mods are compiled against Fabric's *intermediary*
+2. **Remapping (1.21.11).** On 26.x mods already use Minecraft's real names
+   and run unchanged. On 1.21.11, Fabric mods are compiled against Fabric's *intermediary*
    names (`class_310`, `method_1548`, ...). HitBoy runs Minecraft with its real
    names, so each mod is rewritten once and cached in
    `.hitboys-modloader\cache\fabric\<version>\`: class, method, field, and
@@ -79,8 +91,9 @@ you know which other JARs to install.
 
 ## Known limits
 
-- Minecraft 1.21.11 only for Fabric mods so far. On 26.x Fabric mods are skipped.
 - Forge and NeoForge mods are not run yet.
+- On 26.x, HitBoy's own Mixin mods built for 1.21.11 (such as Meteor Client HitBoy
+  Edition) are skipped; Fabric mods built for 26.x run normally.
 - Fabric mods' server-only entrypoints are not called; HitBoy is a client loader.
 - Anything a Fabric mod does through Fabric Loader *internals*
   (`net.fabricmc.loader.impl`) rather than its public API is not provided.

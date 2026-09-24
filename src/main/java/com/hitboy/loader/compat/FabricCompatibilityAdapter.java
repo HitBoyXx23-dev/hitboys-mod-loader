@@ -50,7 +50,7 @@ public final class FabricCompatibilityAdapter implements HitBoyCompatibilityAdap
     public void analyze(HitBoyModDescriptor descriptor, JarFile jar, CompatibilityReport report) throws IOException {
         report.add(CompatibilityIssue.Severity.INFO, "FABRIC_DESCRIPTOR", "Fabric metadata was normalized successfully.");
         report.add(CompatibilityIssue.Severity.INFO, "FABRIC_RUNTIME",
-            "Runs in HitBoy's mixed-compatibility mode on Minecraft 1.21.11 (Mixins, access wideners, and entrypoints).");
+            "Runs in HitBoy's mixed-compatibility mode on Minecraft 1.21.11, 26.2, and 26.3 (Mixins, access wideners, and entrypoints).");
         for (HitBoyDependency dependency : descriptor.getDependencies()) {
             if (dependency.isRequired() && dependency.getId().startsWith("fabric-")) {
                 report.add(CompatibilityIssue.Severity.ERROR, "FABRIC_API", "Requires Fabric API module " + dependency.getId() + ", which HitBoy does not provide yet.");

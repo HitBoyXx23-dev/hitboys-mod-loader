@@ -30,6 +30,19 @@ public final class HitBoyIntermediaryRemapper implements IRemapper {
     private final Map<String, String> namedMethodFallbacks = new HashMap<>();
     private final Map<String, String> namedFieldFallbacks = new HashMap<>();
 
+    private HitBoyIntermediaryRemapper() {
+    }
+
+    /** Maps every name to itself, for unobfuscated Minecraft (26.x) where mods already use real names. */
+    public static HitBoyIntermediaryRemapper identity() {
+        return new HitBoyIntermediaryRemapper();
+    }
+
+    /** True when the running Minecraft ships with its real class names (26.x and newer). */
+    public static boolean isUnobfuscated() {
+        return ClassLoader.getSystemResource("net/minecraft/client/Minecraft.class") != null;
+    }
+
     public HitBoyIntermediaryRemapper(String gameVersion) {
         String resource = "/mappings/" + gameVersion + "-intermediary.tiny";
         try (InputStream input = HitBoyIntermediaryRemapper.class.getResourceAsStream(resource)) {

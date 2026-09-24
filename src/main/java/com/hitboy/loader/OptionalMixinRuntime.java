@@ -29,7 +29,8 @@ public final class OptionalMixinRuntime {
         }
         if (configurations.isEmpty()) return;
         String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
-        if (OptionalMixinRuntime.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") == null) {
+        boolean unobfuscated = com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated();
+        if (!unobfuscated && OptionalMixinRuntime.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") == null) {
             System.out.println("Mixin mods are built for Minecraft 1.21.11; skipping their Mixins on " + gameVersion
                 + ": " + configurations);
             return;
@@ -55,9 +56,12 @@ public final class OptionalMixinRuntime {
                 "SERVER".equals(System.getProperty("hitboy.environment"))
                     ? org.spongepowered.asm.mixin.MixinEnvironment.Side.SERVER
                     : org.spongepowered.asm.mixin.MixinEnvironment.Side.CLIENT);
-            org.spongepowered.asm.mixin.MixinEnvironment.getDefaultEnvironment().getRemappers().add(
-                new com.hitboy.loader.mixin.HitBoyIntermediaryRemapper(
-                    System.getProperty("hitboy.game-version", "1.21.11")));
+            if (!unobfuscated) {
+                // Obfuscated builds: translate intermediary names in Mixin targets. 26.x needs nothing.
+                org.spongepowered.asm.mixin.MixinEnvironment.getDefaultEnvironment().getRemappers().add(
+                    new com.hitboy.loader.mixin.HitBoyIntermediaryRemapper(
+                        System.getProperty("hitboy.game-version", "1.21.11")));
+            }
             java.lang.reflect.Method phase = org.spongepowered.asm.mixin.MixinEnvironment.class
                 .getDeclaredMethod("gotoPhase", org.spongepowered.asm.mixin.MixinEnvironment.Phase.class);
             phase.setAccessible(true);

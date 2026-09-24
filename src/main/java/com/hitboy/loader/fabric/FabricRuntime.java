@@ -94,13 +94,15 @@ public final class FabricRuntime implements FabricLoader {
         }
         if (found.isEmpty()) return null;
 
+        boolean unobfuscated = HitBoyIntermediaryRemapper.isUnobfuscated();
         boolean hasMappings = HitBoyIntermediaryRemapper.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") != null;
-        if (!hasMappings) {
-            System.out.println("[HitBoy Fabric] Fabric mods are supported on Minecraft 1.21.11 so far; skipping "
-                + found.size() + " Fabric mod(s) on " + gameVersion + ".");
+        if (!hasMappings && !unobfuscated) {
+            System.out.println("[HitBoy Fabric] No name mappings for Minecraft " + gameVersion + "; skipping "
+                + found.size() + " Fabric mod(s).");
             return null;
         }
-        mappings = new HitBoyIntermediaryRemapper(gameVersion);
+        // 26.x ships real names and its Fabric mods are built against them, so they run unchanged.
+        mappings = unobfuscated ? HitBoyIntermediaryRemapper.identity() : new HitBoyIntermediaryRemapper(gameVersion);
 
         for (FabricMod mod : found) {
             if (!mod.isClientCompatible()) {
@@ -114,7 +116,7 @@ public final class FabricRuntime implements FabricLoader {
         dropModsWithMissingDependencies();
 
         Path cache = Path.of(System.getProperty("hitboy.home", gameDirectory.toString()), "cache", "fabric", gameVersion);
-        FabricJarRemapper remapper = new FabricJarRemapper(mappings);
+        FabricJarRemapper remapper = new FabricJarRemapper(unobfuscated ? null : mappings);
         for (FabricMod mod : mods.values()) {
             try {
                 Path output = cache.resolve(mod.getId() + "-" + hash(mod.sourceJar) + ".jar");
@@ -134,10 +136,14 @@ public final class FabricRuntime implements FabricLoader {
             System.err.println("[HitBoy Fabric] Could not clean " + cache + ": " + exception);
         }
         for (Path library : libraries) GameAgent.appendJar(library);
-        String minecraft = mappings.map("net/minecraft/class_310");
         // Fabric runs client entrypoints once the session is stored (mods read the signed-in user).
-        String sessionField = mappings.mapFieldName("net/minecraft/class_310", "field_1726", "Lnet/minecraft/class_320;");
-        GameAgent.registerTransformer(new ClientStartHook(minecraft, sessionField, "L" + mappings.map("net/minecraft/class_320") + ";"));
+        if (unobfuscated) {
+            GameAgent.registerTransformer(new ClientStartHook("net/minecraft/client/Minecraft", "user", "Lnet/minecraft/client/User;"));
+        } else {
+            String minecraft = mappings.map("net/minecraft/class_310");
+            String sessionField = mappings.mapFieldName("net/minecraft/class_310", "field_1726", "Lnet/minecraft/class_320;");
+            GameAgent.registerTransformer(new ClientStartHook(minecraft, sessionField, "L" + mappings.map("net/minecraft/class_320") + ";"));
+        }
         System.out.println("[HitBoy Fabric] Running " + mods.size() + " Fabric mod(s): " + mods.values());
         return mods.isEmpty() ? null : cache;
     }

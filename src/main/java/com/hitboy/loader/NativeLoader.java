@@ -50,8 +50,15 @@ public class NativeLoader {
             }
             GameAgent.appendHitBoyModsToClasspath(md.toPath());
             if (fabricMods != null) GameAgent.appendHitBoyModsToClasspath(fabricMods);
-            OptionalAccessWidenerRuntime.initialize(md.toPath(), fabricMods);
-            OptionalMixinRuntime.initialize(md.toPath(), fabricMods);
+            if (com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) {
+                // 26.x: HitBoy's own Mixin/access-widener mods (such as Meteor) target 1.21.11 names, so only
+                // Fabric mods built for this version get Mixins and access wideners.
+                OptionalAccessWidenerRuntime.initialize(fabricMods);
+                OptionalMixinRuntime.initialize(fabricMods);
+            } else {
+                OptionalAccessWidenerRuntime.initialize(md.toPath(), fabricMods);
+                OptionalMixinRuntime.initialize(md.toPath(), fabricMods);
+            }
             modManager.scanAndLoadMods(modsDir);
         } catch (Throwable failure) {
             // Mod problems must never stop Minecraft from opening; report them and start without the failed mods.

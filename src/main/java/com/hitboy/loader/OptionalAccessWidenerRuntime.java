@@ -80,6 +80,8 @@ public final class OptionalAccessWidenerRuntime {
                 attempted = true;
                 if (HitBoyIntermediaryRemapper.class.getResource("/mappings/" + gameVersion + "-intermediary.tiny") != null) {
                     remapper = new HitBoyIntermediaryRemapper(gameVersion);
+                } else if (HitBoyIntermediaryRemapper.isUnobfuscated()) {
+                    remapper = HitBoyIntermediaryRemapper.identity();
                 }
             }
             return remapper;
