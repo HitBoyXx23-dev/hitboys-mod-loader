@@ -64,9 +64,25 @@
                                     <exclude>org.ow2.asm:asm</exclude>
                                     <exclude>org.ow2.asm:asm-tree</exclude>
                                     <exclude>org.ow2.asm:asm-analysis</exclude>
-                                    <exclude>com.google.code.gson:gson</exclude>
                                 </excludes>
                             </artifactSet>
+                            <!-- The official Minecraft Launcher puts this JAR ahead of Minecraft's own libraries.
+                                 Bundled Gson/Guava must be relocated, or Minecraft loads HitBoy's copies and
+                                 fails at startup ("Game version not set"). -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>com.hitboy.libs.gson</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>com.hitboy.libs.guava</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.thirdparty</pattern>
+                                    <shadedPattern>com.hitboy.libs.thirdparty</shadedPattern>
+                                </relocation>
+                            </relocations>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.hitboy.launcher.HitBoyLauncher</mainClass>
