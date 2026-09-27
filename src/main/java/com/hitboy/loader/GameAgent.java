@@ -144,6 +144,12 @@ public class GameAgent {
                 if ("net/neoforged/fml/loading/moddiscovery/locators/ModsFolderLocator".equals(className)) {
                     return patchNeoForgeModsFolder(buf);
                 }
+                if ("net/neoforged/neoforge/internal/BrandingControl".equals(className) && HitBoyBranding.mixedEngine()) {
+                    return rebrandNeoForge(buf);
+                }
+                if ("net/neoforged/fml/loading/FMLConfig".equals(className) && HitBoyBranding.mixedEngine()) {
+                    return patchNeoForgeConfig(buf);
+                }
                 if ("net/fabricmc/loader/impl/util/LoaderUtil".equals(className)
                     && "fabric".equalsIgnoreCase(System.getProperty("hitboy.base", ""))) {
                     return skipFabricClasspathCheck(buf);
@@ -256,6 +262,53 @@ public class GameAgent {
         } catch (Exception failed) {
             System.err.println("HitBoy could not register with Fabric Loader: " + failed);
         }
+    }
+
+    /** Mixed mode: NeoForge's title-screen lines and brand go through {@link HitBoyBranding}. */
+    private static byte[] rebrandNeoForge(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        for (MethodNode method : node.methods) {
+            for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                if (instruction instanceof FieldInsnNode field && field.getOpcode() == Opcodes.PUTSTATIC
+                    && field.desc.equals("Ljava/util/List;") && (field.name.equals("brandings") || field.name.equals("brandingsNoMC"))) {
+                    method.instructions.insertBefore(field, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding",
+                        "rebrand", "(Ljava/util/List;)Ljava/util/List;", false));
+                }
+                if (instruction.getOpcode() == Opcodes.ARETURN && method.desc.equals("()Ljava/lang/String;")
+                    && (method.name.equals("getClientBranding") || method.name.equals("getServerBranding"))) {
+                    method.instructions.insertBefore(instruction, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding",
+                        "brand", "(Ljava/lang/String;)Ljava/lang/String;", false));
+                }
+            }
+        }
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        node.accept(writer);
+        System.out.println("NeoForge branding replaced with " + HitBoyBranding.MIXED_NAME);
+        return writer.toByteArray();
+    }
+
+    /** Mixed mode: FMLConfig.getBoolConfigValue reports NeoForge's loading window and update check as off. */
+    private static byte[] patchNeoForgeConfig(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        for (MethodNode method : node.methods) {
+            if (!method.name.equals("getBoolConfigValue") || !method.desc.endsWith(")Z")) continue;
+            InsnList check = new InsnList();
+            LabelNode keep = new LabelNode();
+            check.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            check.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding", "forceOff", "(Ljava/lang/Object;)Z", false));
+            check.add(new JumpInsnNode(Opcodes.IFEQ, keep));
+            check.add(new InsnNode(Opcodes.ICONST_0));
+            check.add(new InsnNode(Opcodes.IRETURN));
+            check.add(keep);
+            check.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+            method.instructions.insert(check);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            node.accept(writer);
+            return writer.toByteArray();
+        }
+        return null;
     }
 
     /**

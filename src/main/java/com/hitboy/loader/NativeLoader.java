@@ -74,6 +74,9 @@ public class NativeLoader {
                 if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base", ""))) {
                     com.hitboy.loader.fabric.FabricRuntime.prepareForNeoForge(
                         md.toPath(), System.getProperty("hitboy.game-version", "26.3"));
+                    com.hitboy.loader.compat.ForgeAutoPorter.prepare(
+                        md.toPath(), System.getProperty("hitboy.game-version", "26.3"));
+                    com.hitboy.loader.compat.ForgeAutoPorter.addNeoForgeMods(md.toPath());
                 }
             } else if (com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) {
                 // 26.x: HitBoy's own Mixin/access-widener mods (such as Meteor) target 1.21.11 names, so only

@@ -17,6 +17,34 @@ needs it) in the same mods folder as your HitBoy mods.
 | Fabric mods on the real Fabric Loader | Supported through the patcher's Fabric option (26.x recommended) |
 | Forge mods | Supported through the patcher's Forge option (runs the real Forge with HitBoy) |
 
+
+## All four loaders in one game (26.x)
+
+**HitBoy's Mixed Compatible Mod Loader** runs HitBoy, Fabric, NeoForge, and Forge
+mods together on Minecraft 26.x. Install it with the patcher's **Install
+HitBoy's Mixed Compatible Mod Loader** option ("Minecraft 26.3/HitBoy's Mixed
+Compatible Mod Loader" in the official launcher), or start
+`hitboy-mixed-mod-compatibility.exe` (it installs what it needs on first start).
+
+| Mods | How they run |
+|---|---|
+| HitBoy | Natively, by HitBoy |
+| NeoForge | By NeoForge, which runs underneath as HitBoy's engine for them |
+| Fabric | Converted to NeoForge mods by HitBoy when the game starts (Fabric API: not yet) |
+| Forge | Ported to NeoForge with port.exe's converter when the game starts (mods it cannot port are skipped, with the reasons in the log) |
+
+HitBoy is the loader the game shows, not NeoForge: the window title reads
+"HitBoy's Mixed Compatible Mod Loader | Minecraft 26.3", the title screen reads
+"HitBoy's Mixed Compatible Mod Loader (N mods loaded)", the client brand is
+"hitboy", NeoForge's own loading window and update notice are off, and HitBoy's
+**Mods** button takes the place of NeoForge's and lists every mod by loader.
+
+Tested on 26.3 in one world with Fullbright (HitBoy), Lithium (Fabric), Jade and
+AppleSkin (NeoForge), and Mouse Tweaks (Forge, ported at start), both through the
+official launcher installation and through the standalone launcher.
+
+On 1.21.11, mixed compatibility is HitBoy + Fabric mods (as below).
+
 ## Turning it on
 
 - **Standalone:** start `hitboy-mixed-mod-compatibility.exe` instead of

@@ -29,6 +29,10 @@ public class MinecraftLauncher {
         if (!jarFile.exists()) throw new FileNotFoundException("Minecraft client JAR is missing: " + jarFile);
         jarFile = HitBoyClientJar.prepare(jarFile);
         JsonObject verJson = JsonParser.parseString(new String(Files.readAllBytes(jsonFile.toPath()))).getAsJsonObject();
+        if (mixedCompatibility() && !version.startsWith("1.")) {
+            launchMixedOnNeoForge(version, username, ramMb, log, verJson, jarFile);
+            return;
+        }
 
         // Build classpath
         String mainClass = verJson.get("mainClass").getAsString();
@@ -115,6 +119,108 @@ public class MinecraftLauncher {
         int code = p.waitFor();
         log.accept("Minecraft exited with code " + code);
         if (code != 0) throw new IOException("Minecraft exited " + code);
+    }
+
+    private static boolean mixedCompatibility() {
+        String env = System.getenv("HITBOY_MIXED_COMPATIBILITY");
+        return Boolean.getBoolean("hitboy.mixed-compatibility") || "1".equals(env) || "true".equalsIgnoreCase(env);
+    }
+
+    /**
+     * HitBoy's Mixed Compatible Mod Loader on 26.x: NeoForge runs underneath (installed into the game folder
+     * the first time), HitBoy is attached as a Java agent and runs HitBoy, Fabric, and ported Forge mods,
+     * and the game shows HitBoy's Mixed Compatible Mod Loader. Mods of all four kinds go in native_mods.
+     */
+    private void launchMixedOnNeoForge(String version, String username, int ramMb, Consumer<String> log,
+                                       JsonObject vanilla, File vanillaJar) throws Exception {
+        File base = baseDir();
+        String neoForgeId = installedNeoForge(base, version);
+        if (neoForgeId == null) {
+            String neoForgeVersion = NeoForgeInstaller.latestNeoForge(version);
+            log.accept("First mixed-compatibility start: installing NeoForge " + neoForgeVersion + " to run NeoForge mods...");
+            File profiles = new File(base, "launcher_profiles.json");
+            if (!profiles.exists()) Files.writeString(profiles.toPath(), "{\"profiles\":{}}");
+            NeoForgeInstaller.runNeoForgeInstaller(base, neoForgeVersion);
+            neoForgeId = installedNeoForge(base, version);
+            if (neoForgeId == null) throw new IOException("NeoForge was installed, but its version files were not found.");
+        }
+        File neoJson = new File(base, "versions" + File.separator + neoForgeId + File.separator + neoForgeId + ".json");
+        JsonObject neo = JsonParser.parseString(Files.readString(neoJson.toPath())).getAsJsonObject();
+
+        List<String> classpath = new ArrayList<>();
+        for (JsonObject json : new JsonObject[] {neo, vanilla}) {
+            for (JsonElement element : json.getAsJsonArray("libraries")) {
+                JsonObject library = element.getAsJsonObject();
+                if (library.has("rules") && !allow(library.getAsJsonArray("rules"))) continue;
+                if (!library.has("downloads") || !library.getAsJsonObject("downloads").has("artifact")) continue;
+                String path = library.getAsJsonObject("downloads").getAsJsonObject("artifact").get("path").getAsString();
+                String file = new File(base, "libraries" + File.separator + path.replace("/", File.separator)).getAbsolutePath();
+                if (!classpath.contains(file)) classpath.add(file);
+            }
+        }
+        classpath.add(vanillaJar.getAbsolutePath());
+
+        File loaderJar = findLoaderJar();
+        if (loaderJar == null || !loaderJar.isFile()) throw new FileNotFoundException("HitBoy loader JAR is missing.");
+        String configuredModsDirectory = com.hitboy.launcher.NavigationContext.getNativeModsDirectory();
+        File modsDir = configuredModsDirectory == null ? new File(base, "native_mods") : new File(configuredModsDirectory);
+        modsDir.mkdirs();
+        String mappings = new File(base, "mappings.json").getAbsolutePath();
+        String javaExe = findJava(version, log);
+        verifyJavaRuntime(javaExe, version, log);
+        String uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes()).toString();
+
+        List<String> cmd = new ArrayList<>();
+        cmd.add(javaExe);
+        cmd.add("-Xmx" + ramMb + "M");
+        cmd.add("-Xms512M");
+        cmd.add("-Djava.library.path=" + new File(base, "versions" + File.separator + version + File.separator + "natives").getAbsolutePath());
+        cmd.add("-javaagent:" + loaderJar.getAbsolutePath() + "=" + mappings);
+        cmd.add("-Dhitboy.base=neoforge");
+        cmd.add("-Dhitboy.mixed-compatibility=true");
+        cmd.add("-Dhitboy.game-version=" + version);
+        cmd.add("-Dhitboy.game-directory=" + base.getAbsolutePath());
+        cmd.add("-Dhitboy.home=" + base.getAbsolutePath());
+        cmd.add("-Dhitboy.mods-dir=" + modsDir.getAbsolutePath());
+        cmd.add("-Dhitboy.mappings=" + mappings);
+        String libraries = new File(base, "libraries").getAbsolutePath();
+        for (JsonElement argument : neo.getAsJsonObject("arguments").getAsJsonArray("jvm")) {
+            if (!argument.isJsonPrimitive()) continue;
+            cmd.add(argument.getAsString().replace("${library_directory}", libraries)
+                .replace("${classpath_separator}", File.pathSeparator).replace("${version_name}", neoForgeId));
+        }
+        cmd.add("-cp");
+        cmd.add(String.join(File.pathSeparator, classpath));
+        cmd.add(neo.get("mainClass").getAsString());
+        cmd.addAll(Arrays.asList("--username", username, "--version", neoForgeId, "--gameDir", base.getAbsolutePath(),
+            "--assetsDir", new File(base, "assets").getAbsolutePath(), "--assetIndex", vanilla.getAsJsonObject("assetIndex").get("id").getAsString(),
+            "--uuid", uuid, "--accessToken", "0", "--userType", "mojang", "--versionType", "release"));
+        for (JsonElement argument : neo.getAsJsonObject("arguments").getAsJsonArray("game")) {
+            if (argument.isJsonPrimitive()) cmd.add(argument.getAsString());
+        }
+        log.accept("Launching HitBoy's Mixed Compatible Mod Loader (NeoForge " + neoForgeId + " underneath)...");
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.directory(base);
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        new Thread(() -> {
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line; while ((line = r.readLine()) != null) log.accept(line);
+            } catch (Exception ignored) {}
+        }).start();
+        int code = p.waitFor();
+        log.accept("Minecraft exited with code " + code);
+        if (code != 0) throw new IOException("Minecraft exited " + code);
+    }
+
+    /** The newest installed "neoforge-<mc>.x" version for this Minecraft version, or null. */
+    private static String installedNeoForge(File base, String minecraftVersion) {
+        String prefix = "neoforge-" + (minecraftVersion.startsWith("1.") ? minecraftVersion.substring(2) : minecraftVersion) + ".";
+        File[] versions = new File(base, "versions").listFiles((directory, name) -> name.startsWith(prefix)
+            && new File(directory, name + File.separator + name + ".json").isFile());
+        if (versions == null || versions.length == 0) return null;
+        Arrays.sort(versions);
+        return versions[versions.length - 1].getName();
     }
 
     private String buildClasspath(JsonObject verJson, File jarFile) throws Exception {

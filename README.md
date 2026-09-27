@@ -43,6 +43,13 @@ inherited `<version>-HitBoy` version profile, an empty placeholder JAR, a
 
 ## Fabric, NeoForge, and Forge mods (mixed compatibility)
 
+**HitBoy's Mixed Compatible Mod Loader** (patcher option, or
+`hitboy-mixed-mod-compatibility.exe`) runs **HitBoy, Fabric, NeoForge, and Forge
+mods in one game** on Minecraft 26.x, and the game shows HitBoy's Mixed
+Compatible Mod Loader, not NeoForge. NeoForge runs underneath for NeoForge mods;
+Fabric mods are converted and Forge mods ported when the game starts. Fabric API
+and large Forge mods are not supported there yet.
+
 `hitboy-mixed-mod-compatibility.exe` (or the patcher's **Mixed Compatibility**
 option) runs **Fabric mods and Fabric API next to HitBoy mods** on Minecraft
 1.21.11, 26.2, and 26.3, with no Fabric Loader installed. Tested in worlds with

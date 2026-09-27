@@ -46,7 +46,8 @@ public final class ModMenuHelper {
             }
         }
         // On NeoForge/Forge the loader has its own Mods button, so HitBoy's is named apart from it.
-        String label = System.getProperty("hitboy.base", "").isEmpty() ? "Mods" : "HitBoy Mods";
+        // In mixed mode HitBoy replaces NeoForge's Mods button (see boundsBesideRealms), so it is simply "Mods".
+        String label = System.getProperty("hitboy.base", "").isEmpty() || HitBoyBranding.mixedEngine() ? "Mods" : "HitBoy Mods";
         if (tryInjectNamedButton(titleScreen, label)
             || tryInjectObfuscated12111Button(titleScreen, label)
             || tryInjectObfuscated1201Button(titleScreen, label)) {
@@ -89,6 +90,10 @@ public final class ModMenuHelper {
         String getX, String getY, String getWidth, String setWidth) {
         int x = width / 2 - 100;
         int y = height / 4 + 96;
+        if (HitBoyBranding.mixedEngine()) {
+            int[] replaced = replaceNeoForgeModsButton(screen, getX, getY, getWidth);
+            if (replaced != null) return replaced;
+        }
         for (Object widget : childrenOf(screen)) {
             try {
                 Class<?> type = widget.getClass();
@@ -103,6 +108,46 @@ public final class ModMenuHelper {
         // NeoForge/Forge already split the Realms row with their own Mods button; use the top-left corner.
         if (!System.getProperty("hitboy.base", "").isEmpty()) return new int[] {4, 4, 98};
         return new int[] {x, y, 200};
+    }
+
+    private static boolean reportedMixedMods;
+
+    /** Mixed mode: removes NeoForge's own "Mods" button and returns its bounds, so HitBoy's button takes its place. */
+    private static int[] replaceNeoForgeModsButton(Object screen, String getX, String getY, String getWidth) {
+        synchronized (INJECTED_BUTTONS) {
+            Object ours = INJECTED_BUTTONS.get(screen);
+            for (Object widget : new java.util.ArrayList<>(childrenOf(screen))) {
+                if (widget == ours) continue;
+                try {
+                    Object message = widget.getClass().getMethod("getMessage").invoke(widget);
+                    String text = (String) message.getClass().getMethod("getString").invoke(message);
+                    if (!"Mods".equals(text) && !"fml.menu.mods".equals(translationKey(message))) continue;
+                    Class<?> type = widget.getClass();
+                    int[] bounds = {(int) type.getMethod(getX).invoke(widget), (int) type.getMethod(getY).invoke(widget),
+                        (int) type.getMethod(getWidth).invoke(widget)};
+                    Method remove = findMethod(screen.getClass(), "removeWidget");
+                    if (remove == null) return null;
+                    remove.invoke(screen, widget);
+                    if (!reportedMixedMods) {
+                        reportedMixedMods = true;
+                        System.out.println("HitBoy's Mods button replaced NeoForge's. Mods in this game: " + mixedModSummary().replace('\n', ';'));
+                    }
+                    return bounds;
+                } catch (ReflectiveOperationException | RuntimeException ignored) {
+                    // not a button
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String translationKey(Object component) {
+        try {
+            Object contents = component.getClass().getMethod("getContents").invoke(component);
+            return (String) contents.getClass().getMethod("getKey").invoke(contents);
+        } catch (ReflectiveOperationException | RuntimeException notTranslatable) {
+            return null;
+        }
     }
 
     private static boolean tryInjectObfuscated12111Button(Object titleScreen, String label) {
@@ -333,6 +378,43 @@ public final class ModMenuHelper {
     }
 
     private static String installedModSummary() {
+        if (HitBoyBranding.mixedEngine()) return mixedModSummary();
+        return hitBoyModSummary();
+    }
+
+    /** Mixed mode: every mod in the game, grouped by the loader it was made for. */
+    private static String mixedModSummary() {
+        java.util.Map<String, java.util.List<String>> groups = new java.util.LinkedHashMap<>();
+        for (String group : new String[] {"HitBoy", "Fabric", "NeoForge", "Forge"}) groups.put(group, new java.util.ArrayList<>());
+        ModManager manager = NativeLoader.getModManager();
+        if (manager != null) for (ModManager.ModInfo mod : manager.getLoadedMods()) groups.get("HitBoy").add(mod.name + " v" + mod.version);
+        try {
+            Class<?> modList = Class.forName("net.neoforged.fml.ModList", true, ModMenuHelper.class.getClassLoader());
+            Object list = modList.getMethod("get").invoke(null);
+            for (Object info : (java.util.List<?>) modList.getMethod("getMods").invoke(list)) {
+                String id = (String) info.getClass().getMethod("getModId").invoke(info);
+                if (id.equals("minecraft") || id.equals("neoforge")) continue;
+                String name = (String) info.getClass().getMethod("getDisplayName").invoke(info);
+                String version = String.valueOf(info.getClass().getMethod("getVersion").invoke(info));
+                Object owningFile = info.getClass().getMethod("getOwningFile").invoke(info);
+                Object file = owningFile.getClass().getMethod("getFile").invoke(owningFile);
+                String path = String.valueOf(file.getClass().getMethod("getFilePath").invoke(file)).replace('\\', '/');
+                String group = path.contains("/fabric-neoforge/") ? "Fabric" : path.contains("/forge-neoforge/") ? "Forge" : "NeoForge";
+                groups.get(group).add(name + " v" + version);
+            }
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            groups.get("NeoForge").add("(could not list: " + failure + ")");
+        }
+        StringBuilder summary = new StringBuilder();
+        for (java.util.Map.Entry<String, java.util.List<String>> group : groups.entrySet()) {
+            if (group.getValue().isEmpty()) continue;
+            if (summary.length() > 0) summary.append('\n');
+            summary.append(group.getKey()).append(": ").append(String.join(", ", group.getValue()));
+        }
+        return summary.length() == 0 ? "No mods installed." : summary.toString();
+    }
+
+    private static String hitBoyModSummary() {
         ModManager manager = NativeLoader.getModManager();
         if (manager != null) {
             StringBuilder summary = new StringBuilder();

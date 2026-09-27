@@ -221,6 +221,14 @@ public class HitBoyLauncher {
                 ? com.hitboy.launcher.minecraft.OfficialPatchInstaller.defaultOfficialGameDirectory()
                 : new File(officialGameDirectory);
             File loaderJar = findLoaderJar();
+            if (mixedCompatibility && !minecraftVersion.startsWith("1.") && !fabric && !forge) {
+                // 26.x: the mixed loader runs NeoForge underneath, so NeoForge, Fabric, Forge (ported), and HitBoy
+                // mods share one game. 1.21.x keeps the HitBoy + Fabric mixed mode below.
+                com.hitboy.launcher.minecraft.NeoForgeInstaller.installMixed(gameDirectory, loaderJar, minecraftVersion);
+                System.out.println("Restart the official Minecraft Launcher and select the \""
+                    + com.hitboy.launcher.minecraft.NeoForgeInstaller.mixedProfileName(minecraftVersion) + "\" installation.");
+                return;
+            }
             if (fabric) {
                 com.hitboy.launcher.minecraft.FabricInstaller.install(gameDirectory, loaderJar, minecraftVersion);
                 System.out.println("Restart the official Minecraft Launcher and select the \""

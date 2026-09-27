@@ -105,9 +105,9 @@ impl eframe::App for PatcherApp {
                             self.minecraft_dir = default_minecraft_dir();
                         }
                     });
-                    ui.checkbox(&mut self.mixed_compatibility, "Install Mixed Compatibility patch");
+                    ui.checkbox(&mut self.mixed_compatibility, "Install HitBoy's Mixed Compatible Mod Loader");
                     ui.label(egui::RichText::new(
-                        "Mixed also runs Fabric mods and Fabric API next to HitBoy mods."
+                        "26.x: installs HitBoy's Mixed Compatible Mod Loader, which runs HitBoy, Fabric, NeoForge, and Forge mods together (NeoForge runs underneath). 1.21.11: HitBoy + Fabric mods."
                     ).small().color(egui::Color32::GRAY));
                     ui.horizontal(|ui| {
                         ui.label("Also install:");

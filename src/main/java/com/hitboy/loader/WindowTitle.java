@@ -15,6 +15,7 @@ public final class WindowTitle {
         String name = com.hitboy.loader.fabric.FabricRuntime.enabled()
             ? "HitBoy's Mixed Compatible Mod Loader" : "HitBoy's Mod Loader";
         String base = System.getProperty("hitboy.base", "");
+        if (HitBoyBranding.mixedEngine()) return name; // NeoForge only runs underneath; HitBoy is the loader shown
         if (base.equalsIgnoreCase("neoforge")) return name + " + NeoForge";
         if (base.equalsIgnoreCase("forge")) return name + " + Forge";
         if (base.equalsIgnoreCase("fabric")) return name + " + Fabric";
@@ -23,6 +24,7 @@ public final class WindowTitle {
 
     public static CharSequence brand(CharSequence title) {
         String text = title == null ? "" : title.toString();
+        if (HitBoyBranding.mixedEngine()) text = text.replace(" NeoForge", "");
         String name = loaderName();
         String branded = text.startsWith(name) ? text : text.isEmpty() ? name : name + " | " + text;
         if (!branded.equals(last)) {
