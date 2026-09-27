@@ -19,7 +19,9 @@ HitBoy's Mod Loader is a client-side native Java mod loader for Minecraft. It
 starts Minecraft with a dedicated patch JAR, loads native mod JARs, and
 provides a small stable API in `com.hitboy.loader`. The title screen shows
 `Minecraft <version>/HitBoy's Mod Loader` whenever HitBoy is running, even with
-no mods installed.
+no mods installed. The game window's title bar starts with
+**HitBoy's Mod Loader** (or **HitBoy's Mixed Compatible Mod Loader** in mixed
+mode, plus "+ NeoForge"/"+ Forge" on those loaders).
 
 ## Ways to play
 

@@ -131,6 +131,13 @@ public class GameAgent {
             @Override
             public byte[] transform(ClassLoader loader, String className, Class<?> c, ProtectionDomain pd, byte[] buf) {
                 if (className == null) return null;
+                // The window-title hook goes first, so it combines with any other transform of the same class.
+                byte[] titled = patchWindowTitle(className, buf);
+                byte[] transformed = transformClass(loader, className, titled != null ? titled : buf);
+                return transformed != null ? transformed : titled;
+            }
+
+            private byte[] transformClass(ClassLoader loader, String className, byte[] buf) {
                 if ("org/spongepowered/asm/mixin/transformer/MixinTargetContext".equals(className)) {
                     return patchMixinSingleLetterTypes(buf);
                 }
@@ -181,6 +188,49 @@ public class GameAgent {
             // NeoForge/Forge keep their own main class; HitBoy loads its mods here, before they start.
             NativeLoader.initializeForNeoForge();
         }
+    }
+
+    private static final byte[] SET_WINDOW_TITLE = "SetWindowTitle".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+    /** Routes the title passed to GLFW.glfwSetWindowTitle (26.x: SDLVideo.SDL_SetWindowTitle) through {@link WindowTitle#brand}. */
+    static byte[] patchWindowTitle(String className, byte[] bytes) {
+        if (className.startsWith("java/") || className.startsWith("jdk/") || className.startsWith("sun/")
+            || className.startsWith("org/lwjgl/") || className.startsWith("com/hitboy/") || !contains(bytes, SET_WINDOW_TITLE)) return null;
+        try {
+            ClassNode node = new ClassNode();
+            new ClassReader(bytes).accept(node, 0);
+            boolean patched = false;
+            for (MethodNode method : node.methods) {
+                for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                    if (instruction instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKESTATIC
+                        && ((call.owner.equals("org/lwjgl/glfw/GLFW") && call.name.equals("glfwSetWindowTitle"))
+                            || (call.owner.equals("org/lwjgl/sdl/SDLVideo") && call.name.equals("SDL_SetWindowTitle")))
+                        && call.desc.startsWith("(JLjava/lang/CharSequence;)")) {
+                        method.instructions.insertBefore(call, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/WindowTitle",
+                            "brand", "(Ljava/lang/CharSequence;)Ljava/lang/CharSequence;", false));
+                        patched = true;
+                    }
+                }
+            }
+            if (!patched) return null;
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            node.accept(writer);
+            return writer.toByteArray();
+        } catch (RuntimeException failed) {
+            failed.printStackTrace();
+            return null;
+        }
+    }
+
+    private static boolean contains(byte[] haystack, byte[] needle) {
+        outer:
+        for (int start = 0; start <= haystack.length - needle.length; start++) {
+            for (int offset = 0; offset < needle.length; offset++) {
+                if (haystack[start + offset] != needle[offset]) continue outer;
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
