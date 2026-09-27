@@ -10,7 +10,8 @@ needs it) in the same mods folder as your HitBoy mods.
 | Fabric mods on Minecraft **26.3 / 26.2** | Supported (26.x uses Minecraft's real names, so no remapping) |
 | Fabric API | Supported: the real Fabric API JAR runs as ordinary Fabric mods |
 | NeoForge mods | Supported through the patcher's NeoForge option (runs the real NeoForge with HitBoy) |
-| Fabric + NeoForge in one game | Not yet |
+| Fabric + NeoForge/Forge in one game | Not yet (skipped with a log message) |
+| NeoForge + Forge in one game | Not possible (separate loaders); skipped with a log message |
 | Forge mods | Supported through the patcher's Forge option (runs the real Forge with HitBoy) |
 
 ## Turning it on
@@ -129,8 +130,16 @@ you know which other JARs to install.
 
 ## Known limits
 
-- Fabric, NeoForge, and Forge mods do not run in the same game yet (use one of
-  them alongside HitBoy mods).
+- One game runs HitBoy mods plus **one** other loader's mods: Fabric (mixed mode),
+  NeoForge, or Forge. NeoForge and Forge are two separate loaders that each
+  replace Minecraft's startup, so they cannot share a game. Running Fabric mods
+  inside a NeoForge or Forge game is not supported yet.
+- A shared mods folder is safe: mods for a loader that is not running are
+  skipped with a log line such as
+  `Skipping FORGE mod X.jar: it cannot run in a neoforge game`, and the game
+  still starts. Tested on 26.3 with Fabric API, AppleSkin (NeoForge), Mouse
+  Tweaks (Forge), and a HitBoy mod in one folder, in both a Forge and a
+  NeoForge game.
 - On NeoForge and Forge, HitBoy's own Mixin mods are skipped: the base loader owns Mixin there.
 - On NeoForge and Forge, HitBoy's button is labelled **HitBoy Mods** and sits in the
   top-left corner of the title screen, because the loader has its own Mods button next to Realms.
