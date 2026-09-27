@@ -9,7 +9,7 @@ Original HitBoy code may be viewed, downloaded, compiled, installed, and used fo
 - [HitBoy's Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader.exe): standalone offline launcher
 - [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe): adds HitBoy to the official Minecraft Launcher, like the Fabric installer
 - [HitBoy Mixed Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-mixed-mod-compatibility.exe)
-- [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe)
+- [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe): ports Forge mods to NeoForge (26.3), checking every API it uses
 - [HitBoy Mod Loader API](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader-api.jar) (for mod developers)
 
 Running a server? The server plugin loaders now live in their own repository:
@@ -53,7 +53,10 @@ The patcher's **Also install: Fabric / NeoForge / Forge** option installs the
 real loader and adds a "HitBoy's Mod Loader + Fabric" (or "+ NeoForge",
 "+ Forge") installation, so **that loader's mods run together with HitBoy
 mods** (tested on 26.3 with Jade
-and AppleSkin on NeoForge, and Xaero's Minimap and Mouse Tweaks on Forge). See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
+and AppleSkin on NeoForge, and Xaero's Minimap and Mouse Tweaks on Forge). On 26.x the NeoForge installation also runs
+Fabric mods that do not need Fabric API, so HitBoy, NeoForge, and Fabric mods
+share one game, and port.exe converts simple Forge mods to NeoForge. See
+[MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
 
 ## Quick start
 

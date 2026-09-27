@@ -188,8 +188,10 @@ public final class FabricRuntime implements FabricLoader {
             for (FabricMod mod : new ArrayList<>(mods.values())) {
                 for (String dependency : mod.requiredDependencies()) {
                     if (BUILT_IN.contains(dependency) || isModLoaded(dependency)) continue;
-                    System.err.println("[HitBoy Fabric] Skipping " + mod + ": it needs \"" + dependency
-                        + "\", which is not installed" + (dependency.startsWith("fabric") ? " (Fabric API is not supported yet)" : "") + ".");
+                    String reason = insideNeoForge && isFabricApiModule(dependency)
+                        ? ", part of Fabric API, which does not run inside NeoForge yet"
+                        : ", which is not installed" + (dependency.startsWith("fabric") ? " (Fabric API is not supported yet)" : "");
+                    System.err.println("[HitBoy Fabric] Skipping " + mod + ": it needs \"" + dependency + "\"" + reason + ".");
                     mods.remove(mod.getId());
                     changed = true;
                     break;
@@ -205,6 +207,116 @@ public final class FabricRuntime implements FabricLoader {
         StringBuilder text = new StringBuilder();
         for (byte value : digest.digest()) text.append(String.format("%02x", value));
         return text.substring(0, 12);
+    }
+
+    // ---- Fabric mods inside a NeoForge game ----
+
+    private boolean insideNeoForge;
+
+    /** Fabric API ("fabric-api") and its modules ("fabric-api-base", "fabric-rendering-v1", ...). */
+    private static boolean isFabricApiModule(String id) {
+        return id.equals("fabric-api") || id.equals("fabric") || id.startsWith("fabric-");
+    }
+
+    /** NeoForge's game class loader, known once the first bridged mod is constructed. */
+    private static volatile ClassLoader bridgeLoader;
+
+    private static ClassLoader loaderOf(FabricMod mod) {
+        if (mod.classLoader != null) return mod.classLoader;
+        return bridgeLoader != null ? bridgeLoader : ClassLoader.getSystemClassLoader();
+    }
+
+    /**
+     * NeoForge base: converts the Fabric mods in {@code modsDirectory} into NeoForge mods (see
+     * {@link NeoForgeFabricBridge}) and hands them to NeoForge through its "fml.modFolders" setting.
+     * NeoForge then applies their Mixins and access transformers and constructs them; each generated
+     * mod class calls {@link #constructBridged} to run the Fabric entrypoints.
+     */
+    public static void prepareForNeoForge(Path modsDirectory, String gameVersion) {
+        INSTANCE.bridgeMods(modsDirectory, gameVersion);
+    }
+
+    private void bridgeMods(Path modsDirectory, String gameVersion) {
+        gameDirectory = Path.of(System.getProperty("hitboy.game-directory", ".")).toAbsolutePath().normalize();
+        launchArguments = new String[0];
+        List<FabricMod> found = new ArrayList<>();
+        try (DirectoryStream<Path> jars = Files.newDirectoryStream(modsDirectory, "*.jar")) {
+            for (Path jar : jars) {
+                if (ActiveMods.isSkipped(jar)) continue;
+                discover(jar, found, 0);
+            }
+        } catch (IOException exception) {
+            System.err.println("[HitBoy Fabric] Could not scan " + modsDirectory + ": " + exception);
+            return;
+        }
+        if (found.isEmpty()) return;
+        if (!HitBoyIntermediaryRemapper.isUnobfuscated()) {
+            System.out.println("[HitBoy Fabric] Fabric mods run inside NeoForge only on Minecraft 26.x; skipping "
+                + found.size() + " Fabric mod(s).");
+            return;
+        }
+        mappings = HitBoyIntermediaryRemapper.identity();
+        for (FabricMod mod : found) {
+            if (!mod.isClientCompatible()) continue;
+            FabricMod existing = mods.get(mod.getId());
+            if (existing != null && existing.getVersion().compareTo(mod.getVersion()) >= 0) continue;
+            mods.put(mod.getId(), mod);
+        }
+        // Fabric API patches parts of Minecraft that NeoForge also changes, so it cannot run inside NeoForge
+        // yet; it is left out, and so are the mods that need it (with a message, see below).
+        for (FabricMod mod : new ArrayList<>(mods.values())) {
+            if (isFabricApiModule(mod.getId())) mods.remove(mod.getId());
+        }
+        if (found.stream().anyMatch(mod -> isFabricApiModule(mod.getId()))) {
+            System.out.println("[HitBoy Fabric] Fabric API does not run inside NeoForge yet; it is skipped in this game.");
+        }
+        insideNeoForge = true;
+        dropModsWithMissingDependencies();
+
+        if (mods.isEmpty()) return;
+        Path cache = Path.of(System.getProperty("hitboy.home", gameDirectory.toString()), "cache", "fabric-neoforge", gameVersion);
+        Path output;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            digest.update("hitboy-fabric-neoforge-7".getBytes(StandardCharsets.UTF_8));
+            for (FabricMod mod : mods.values()) digest.update(hash(mod.sourceJar).getBytes(StandardCharsets.UTF_8));
+            StringBuilder name = new StringBuilder("hitboy-fabric-mods-");
+            byte[] sum = digest.digest();
+            for (int index = 0; index < 6; index++) name.append(String.format("%02x", sum[index]));
+            output = cache.resolve(name + ".jar");
+            if (!Files.isRegularFile(output)) NeoForgeFabricBridge.convertAll(new ArrayList<>(mods.values()), output);
+        } catch (Exception exception) {
+            System.err.println("[HitBoy Fabric] Could not convert Fabric mods for NeoForge: " + exception);
+            mods.clear();
+            return;
+        }
+        Set<Path> current = new HashSet<>();
+        current.add(output.toAbsolutePath().normalize());
+        List<String> folders = new ArrayList<>();
+        folders.add("hitboy_fabric_mods%%" + output.toAbsolutePath());
+        try (DirectoryStream<Path> cached = Files.newDirectoryStream(cache, "*.jar")) {
+            for (Path jar : cached) if (!current.contains(jar.toAbsolutePath().normalize())) Files.deleteIfExists(jar);
+        } catch (IOException exception) {
+            System.err.println("[HitBoy Fabric] Could not clean " + cache + ": " + exception);
+        }
+        for (Path library : libraries) GameAgent.appendJar(library);
+        String existing = System.getProperty("fml.modFolders", "");
+        String added = String.join(java.io.File.pathSeparator, folders);
+        System.setProperty("fml.modFolders", existing.isEmpty() ? added : existing + java.io.File.pathSeparator + added);
+        System.out.println("[HitBoy Fabric] Running " + mods.size() + " Fabric mod(s) inside NeoForge: " + mods.values());
+    }
+
+    /** Called by each converted mod's generated NeoForge mod class when NeoForge constructs it. */
+    public static void constructBridged(String fabricId, Class<?> anchor) {
+        synchronized (INSTANCE) {
+            FabricMod mod = INSTANCE.mods.get(fabricId);
+            if (mod == null) return;
+            mod.classLoader = anchor.getClassLoader();
+            if (bridgeLoader == null) bridgeLoader = mod.classLoader;
+            INSTANCE.invoke(mod, "preLaunch", net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint.class, entry -> entry.onPreLaunch());
+            INSTANCE.invoke(mod, "main", net.fabricmc.api.ModInitializer.class, entry -> entry.onInitialize());
+            INSTANCE.invoke(mod, "client", net.fabricmc.api.ClientModInitializer.class, entry -> entry.onInitializeClient());
+        }
     }
 
     // ---- entrypoints ----
@@ -228,10 +340,14 @@ public final class FabricRuntime implements FabricLoader {
     }
 
     private <T> void invoke(String key, Class<T> type, Call<T> call) {
-        for (FabricMod mod : mods.values()) {
+        for (FabricMod mod : mods.values()) invoke(mod, key, type, call);
+    }
+
+    private <T> void invoke(FabricMod mod, String key, Class<T> type, Call<T> call) {
+        {
             for (String reference : mod.entrypoints(key)) {
                 try {
-                    call.run(type.cast(instantiate(reference, type)));
+                    call.run(type.cast(instantiate(reference, type, loaderOf(mod))));
                 } catch (Throwable failure) {
                     System.err.println("[HitBoy Fabric] " + mod.getName() + " failed in its \"" + key + "\" entrypoint " + reference + ": " + failure);
                     failure.printStackTrace();
@@ -244,7 +360,7 @@ public final class FabricRuntime implements FabricLoader {
      * Creates an entrypoint the way Fabric does: "pkg.Class" (new instance), "pkg.Class::field" (a
      * static field), or "pkg.Class::method" (a method adapted to the entrypoint interface).
      */
-    private static Object instantiate(String reference, Class<?> type) throws Exception {
+    private static Object instantiate(String reference, Class<?> type, ClassLoader loader) throws Exception {
         String className = reference;
         String member = null;
         int separator = reference.indexOf("::");
@@ -252,7 +368,7 @@ public final class FabricRuntime implements FabricLoader {
             className = reference.substring(0, separator);
             member = reference.substring(separator + 2);
         }
-        Class<?> owner = Class.forName(className, true, ClassLoader.getSystemClassLoader());
+        Class<?> owner = Class.forName(className, true, loader);
         if (member == null) {
             var constructor = owner.getDeclaredConstructor();
             constructor.setAccessible(true);
@@ -275,7 +391,7 @@ public final class FabricRuntime implements FabricLoader {
         if (target == null) throw new NoSuchMethodException(reference);
         target.setAccessible(true);
         final java.lang.reflect.Method method = target;
-        final Object receiver = java.lang.reflect.Modifier.isStatic(method.getModifiers()) ? null : instantiate(className, type);
+        final Object receiver = java.lang.reflect.Modifier.isStatic(method.getModifiers()) ? null : instantiate(className, type, loader);
         return java.lang.reflect.Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, called, arguments) -> {
             if (called.getDeclaringClass() == Object.class) {
                 switch (called.getName()) {
@@ -359,7 +475,7 @@ public final class FabricRuntime implements FabricLoader {
         for (FabricMod mod : mods.values()) {
             for (String reference : mod.entrypoints(key)) {
                 try {
-                    entrypoints.add(type.cast(instantiate(reference, type)));
+                    entrypoints.add(type.cast(instantiate(reference, type, loaderOf(mod))));
                 } catch (Exception exception) {
                     System.err.println("[HitBoy Fabric] Could not create entrypoint " + reference + ": " + exception);
                 }
@@ -374,7 +490,7 @@ public final class FabricRuntime implements FabricLoader {
         for (FabricMod mod : mods.values()) {
             for (String reference : mod.entrypoints(key)) {
                 try {
-                    containers.add(new Container<>(type.cast(instantiate(reference, type)), mod, reference));
+                    containers.add(new Container<>(type.cast(instantiate(reference, type, loaderOf(mod))), mod, reference));
                 } catch (Exception exception) {
                     System.err.println("[HitBoy Fabric] Could not create entrypoint " + reference + ": " + exception);
                 }

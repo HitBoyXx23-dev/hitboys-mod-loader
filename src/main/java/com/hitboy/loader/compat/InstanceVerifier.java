@@ -79,7 +79,8 @@ public final class InstanceVerifier {
                 if (base.isEmpty()) {
                     if (descriptor.getSourceLoader() == SourceLoader.FABRIC && com.hitboy.loader.fabric.FabricRuntime.enabled()) continue;
                     System.out.println("Skipping " + descriptor.getSourceLoader() + " mod (not a HitBoy mod): " + jarName);
-                } else if (!descriptor.getSourceLoader().name().equalsIgnoreCase(base)) {
+                } else if (!descriptor.getSourceLoader().name().equalsIgnoreCase(base)
+                    && !(descriptor.getSourceLoader() == SourceLoader.FABRIC && base.equalsIgnoreCase("neoforge"))) {
                     // The base loader runs its own mods; mods for any other loader cannot run in this game.
                     System.out.println("Skipping " + descriptor.getSourceLoader() + " mod " + jarName
                         + ": it cannot run in a " + base + " game. Use a separate installation for it.");

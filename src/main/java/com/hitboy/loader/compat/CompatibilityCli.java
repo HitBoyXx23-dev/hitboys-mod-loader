@@ -64,6 +64,25 @@ public final class CompatibilityCli {
         }
         ModInspector.Inspection inspection = new ModInspector().inspect(source);
         printDescriptor(inspection.getDescriptor(), output);
+        if (inspection.getDescriptor().getSourceLoader() == SourceLoader.FORGE) {
+            String target = minecraftVersion.startsWith("1.") ? "26.3" : minecraftVersion;
+            output.println("Porting this Forge mod to NeoForge (Minecraft " + target + ")...");
+            ForgeToNeoForgePorter.Result result = new ForgeToNeoForgePorter().port(source, outputDirectory, target);
+            result.notes().forEach(note -> output.println(" - " + note));
+            if (!result.ported()) {
+                output.println("Could not port it. What NeoForge does not have, or HitBoy's porter cannot convert yet:");
+                result.blockers().forEach(blocker -> output.println(" - " + blocker));
+                return 1;
+            }
+            output.println("Every NeoForge and Minecraft API the mod uses was checked against NeoForge " + target + ".");
+            output.println("NeoForge mod written to: " + result.output().toAbsolutePath().normalize());
+            output.println("It runs on NeoForge by itself, or with HitBoy through the patcher's NeoForge option.");
+            return 0;
+        }
+        if (inspection.getDescriptor().getSourceLoader() == SourceLoader.NEOFORGE) {
+            output.println("This is already a NeoForge mod. Install it with the patcher's NeoForge option; HitBoy mods run next to it.");
+            return 0;
+        }
         if (inspection.getDescriptor().getSourceLoader() == SourceLoader.FABRIC) {
             for (HitBoyDependency dependency : inspection.getDescriptor().getDependencies()) {
                 if (dependency.isRequired() && dependency.getId().startsWith("fabric-")) {
@@ -71,7 +90,8 @@ public final class CompatibilityCli {
                     return 1;
                 }
             }
-            output.println("This Fabric mod does not need porting: HitBoy's mixed-compatibility mode runs Fabric mods");
+            output.println("This Fabric mod does not need porting. HitBoy runs it inside a NeoForge game on 26.x (patcher's");
+            output.println("NeoForge option) when it does not need Fabric API, and HitBoy's mixed-compatibility mode runs Fabric mods");
             output.println("directly on Minecraft 1.21.11, 26.2, and 26.3 (Mixins, access wideners, and Fabric Loader API included).");
             output.println("Put it in the mods folder and start hitboy-mixed-mod-compatibility.exe, or install the");
             output.println("profile with the patcher's \"Mixed Compatibility\" option. Mods that need Fabric API are not supported yet.");

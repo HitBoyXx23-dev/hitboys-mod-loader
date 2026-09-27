@@ -22,6 +22,8 @@ final class FabricMod implements ModContainer, ModMetadata {
     final JsonObject json;
     final Path sourceJar;
     Path runtimeJar;
+    /** The class loader the mod's classes live in: NeoForge's game class loader when bridged, else the system one. */
+    ClassLoader classLoader;
     private FileSystem fileSystem;
 
     FabricMod(JsonObject json, Path sourceJar) {

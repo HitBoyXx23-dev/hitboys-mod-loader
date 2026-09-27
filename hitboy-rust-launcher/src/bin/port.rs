@@ -24,7 +24,7 @@ impl PortApp {
                 .join("ported_mods")
                 .to_string_lossy()
                 .to_string(),
-            status: "Choose a Fabric, Forge, NeoForge, or HitBoy mod source folder or JAR.".to_string(),
+            status: "Choose a Forge mod JAR to port to NeoForge, or any mod JAR or source folder to check.".to_string(),
             running: false,
             receiver: None,
         }
@@ -59,7 +59,7 @@ impl eframe::App for PortApp {
         }
         egui::CentralPanel::default().show(context, |ui| {
             ui.heading("HitBoy Mod Porter");
-            ui.label("Convert supported Fabric, Forge, and NeoForge projects or JARs to HitBoy format.");
+            ui.label("Ports Forge mods to NeoForge (Minecraft 26.3), checking every API against NeoForge. Tells you how to run Fabric, NeoForge, and HitBoy mods.");
             ui.add_space(12.0);
             ui.label("Source mod:");
             ui.horizontal(|ui| {

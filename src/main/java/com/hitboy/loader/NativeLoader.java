@@ -69,7 +69,12 @@ public class NativeLoader {
             GameAgent.appendHitBoyModsToClasspath(md.toPath());
             if (fabricMods != null) GameAgent.appendHitBoyModsToClasspath(fabricMods);
             if (neoForgeBase) {
-                // NeoForge applies Mixins itself; a second Mixin environment would conflict.
+                // NeoForge applies Mixins itself; a second Mixin environment would conflict. On NeoForge,
+                // Fabric mods are converted into NeoForge mods and NeoForge applies their Mixins.
+                if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base", ""))) {
+                    com.hitboy.loader.fabric.FabricRuntime.prepareForNeoForge(
+                        md.toPath(), System.getProperty("hitboy.game-version", "26.3"));
+                }
             } else if (com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) {
                 // 26.x: HitBoy's own Mixin/access-widener mods (such as Meteor) target 1.21.11 names, so only
                 // Fabric mods built for this version get Mixins and access wideners.

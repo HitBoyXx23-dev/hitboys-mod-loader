@@ -10,8 +10,10 @@ needs it) in the same mods folder as your HitBoy mods.
 | Fabric mods on Minecraft **26.3 / 26.2** | Supported (26.x uses Minecraft's real names, so no remapping) |
 | Fabric API | Supported: the real Fabric API JAR runs as ordinary Fabric mods |
 | NeoForge mods | Supported through the patcher's NeoForge option (runs the real NeoForge with HitBoy) |
-| Fabric + NeoForge/Forge in one game | Not yet (skipped with a log message) |
-| NeoForge + Forge in one game | Not possible (separate loaders); skipped with a log message |
+| Fabric mods inside a NeoForge game (26.x) | Supported for Fabric mods that do not need Fabric API (HitBoy converts them automatically) |
+| Fabric API inside NeoForge | Not yet: skipped with a log message, and so are mods that need it |
+| Forge mods inside a NeoForge game | Port them first with port.exe (simple mods; see below) |
+| NeoForge + Forge loaders in one game | Not possible (separate loaders); skipped with a log message |
 | Fabric mods on the real Fabric Loader | Supported through the patcher's Fabric option (26.x recommended) |
 | Forge mods | Supported through the patcher's Forge option (runs the real Forge with HitBoy) |
 
@@ -68,6 +70,42 @@ something HitBoy's own Fabric support does not provide.
   so HitBoy's in-game hooks (title screen, tick, HUD, keys) do not attach there
   yet; HitBoy mods load but receive no in-game events. Use mixed mode on 1.21.11.
 - The window title shows "HitBoy's Mod Loader + Fabric" on every version.
+
+## Fabric mods inside a NeoForge game (26.x)
+
+On Minecraft 26.x, the "HitBoy's Mod Loader + NeoForge" installation also runs
+**Fabric mods** from the same mods folder, so one game can hold HitBoy, NeoForge,
+and Fabric mods (plus Forge mods ported with port.exe). HitBoy converts the Fabric
+mods into one NeoForge mod JAR (in `.hitboys-modloader/cache/fabric-neoforge`):
+each gets a NeoForge mod entry, its Mixins, and its access widener as an access
+transformer, and HitBoy runs its Fabric entrypoints.
+
+- Tested on 26.3 with Lithium next to Jade, AppleSkin, a ported Forge mod (Mouse
+  Tweaks), and a HitBoy mod, in a world.
+- NeoForge changes some of the Minecraft code Fabric mods hook into. A hook that
+  no longer finds its target is skipped (and logged) instead of stopping the game.
+- **Fabric API does not run inside NeoForge yet**: several of its hooks clash with
+  NeoForge's own changes. HitBoy skips it, and the mods that need it, with a
+  message such as `Skipping Sodium: it needs "fabric-block-getter-api-v2", part of
+  Fabric API, which does not run inside NeoForge yet`. Use mixed mode for those.
+
+## Porting Forge mods to NeoForge (port.exe)
+
+port.exe converts a Forge mod JAR into a NeoForge mod JAR for Minecraft 26.3:
+it renames the Forge APIs that have a NeoForge equivalent, adapts the ones that
+work differently (Forge's event bus and cancelling listeners, config screens,
+the environment check) through a small bridge class it adds to the mod, and
+rewrites `mods.toml` as `neoforge.mods.toml`.
+
+Then it checks **every** NeoForge and Minecraft class, method, and field the mod
+uses against NeoForge 26.3's real API. If anything is missing, it writes no JAR
+and lists exactly what is missing instead, so it never produces a mod that would
+crash. The ported JAR runs on NeoForge by itself (it does not need HitBoy).
+
+- Ported and ran on NeoForge 26.3: Mouse Tweaks 2.31 (Forge).
+- Refused, with 23 listed reasons: Xaero's Minimap (it uses Forge APIs with no
+  NeoForge counterpart in the porter yet). Large Forge mods usually need their
+  author's NeoForge build.
 
 ## Forge mods
 
