@@ -25,13 +25,13 @@ public final class OfficialPatchInstaller {
     public static final String PATCHED_VERSION_ID = SUPPORTED_VERSION + "-HitBoy";
     public static final String HITBOY_HOME_DIRECTORY = ".hitboys-modloader";
     private static final String PATCH_ARTIFACT = "hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar";
-    private static final String PATCH_LIBRARY_PATH =
+    static final String PATCH_LIBRARY_PATH =
         "com/hitboy/hitboys-mod-loader-patch/1.0.0-SNAPSHOT/" + PATCH_ARTIFACT;
     private static final String[] LAUNCHER_PROFILE_FILES = {
         "launcher_profiles.json",
         "launcher_profiles_microsoft_store.json"
     };
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private OfficialPatchInstaller() {
     }
@@ -117,7 +117,11 @@ public final class OfficialPatchInstaller {
     }
 
     private static void addLauncherProfile(File officialGameDirectory, String minecraftVersion) throws IOException {
-        String versionId = versionId(minecraftVersion);
+        addLauncherProfile(officialGameDirectory, versionId(minecraftVersion), profileName(minecraftVersion));
+    }
+
+    /** Adds or updates an installation in launcher_profiles.json, the way the Fabric installer does. */
+    static void addLauncherProfile(File officialGameDirectory, String versionId, String displayName) throws IOException {
         String now = Instant.now().toString();
         boolean found = false;
         for (String fileName : LAUNCHER_PROFILE_FILES) {
@@ -136,7 +140,7 @@ public final class OfficialPatchInstaller {
             JsonObject profile = profiles.has(versionId) && profiles.get(versionId).isJsonObject()
                 ? profiles.getAsJsonObject(versionId)
                 : new JsonObject();
-            profile.addProperty("name", profileName(minecraftVersion));
+            profile.addProperty("name", displayName);
             profile.addProperty("type", "custom");
             profile.addProperty("lastVersionId", versionId);
             profile.addProperty("icon", launcherIcon());

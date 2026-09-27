@@ -134,6 +134,9 @@ public class GameAgent {
                 if ("org/spongepowered/asm/mixin/transformer/MixinTargetContext".equals(className)) {
                     return patchMixinSingleLetterTypes(buf);
                 }
+                if ("net/neoforged/fml/loading/moddiscovery/locators/ModsFolderLocator".equals(className)) {
+                    return patchNeoForgeModsFolder(buf);
+                }
                 String dotted = className.replace('/', '.');
                 if (dotted.startsWith("net.minecraft")) {
                     try { return transformMinecraftClass(dotted, buf, loader); } catch (Exception e) { e.printStackTrace(); }
@@ -173,6 +176,10 @@ public class GameAgent {
             }
         });
         System.out.println("HitBoy's Mod Loader transformers registered");
+        if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base"))) {
+            // NeoForge keeps its own main class; HitBoy loads its mods here, before NeoForge starts.
+            NativeLoader.initializeForNeoForge();
+        }
     }
 
     /**
@@ -181,6 +188,37 @@ public class GameAgent {
      * one-letter classes such as "l", so "[Ll;" crashed while applying Fabric mods' Mixins. Only object
      * types reach that check (primitives return earlier), so make the length comparison never match.
      */
+    /** NeoForge's mods-folder filter also skips JARs HitBoy runs itself (see {@link NeoForgeCompat}). */
+    private static byte[] patchNeoForgeModsFolder(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        boolean patched = false;
+        for (MethodNode method : node.methods) {
+            if (!method.desc.equals("(Ljava/nio/file/Path;)Z") || (method.access & Opcodes.ACC_STATIC) == 0) continue;
+            boolean jarFilter = false;
+            for (AbstractInsnNode instruction : method.instructions) {
+                if (instruction instanceof LdcInsnNode && ".jar".equals(((LdcInsnNode) instruction).cst)) jarFilter = true;
+            }
+            if (!jarFilter) continue;
+            InsnList check = new InsnList();
+            LabelNode keep = new LabelNode();
+            check.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            check.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/NeoForgeCompat", "claimedByHitBoy", "(Ljava/nio/file/Path;)Z", false));
+            check.add(new JumpInsnNode(Opcodes.IFEQ, keep));
+            check.add(new InsnNode(Opcodes.ICONST_0));
+            check.add(new InsnNode(Opcodes.IRETURN));
+            check.add(keep);
+            check.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+            method.instructions.insert(check);
+            patched = true;
+        }
+        if (!patched) return null;
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        node.accept(writer);
+        System.out.println("NeoForge will leave HitBoy and Fabric mods to HitBoy");
+        return writer.toByteArray();
+    }
+
     private static byte[] patchMixinSingleLetterTypes(byte[] bytes) {
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);

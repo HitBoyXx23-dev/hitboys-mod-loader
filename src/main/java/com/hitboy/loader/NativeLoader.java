@@ -11,8 +11,26 @@ public class NativeLoader {
     public static EventBus getEventBus() { return GLOBAL_BUS; }
     public static ModManager getModManager() { return GLOBAL_MANAGER; }
 
+    /**
+     * NeoForge base: HitBoy runs as a Java agent in front of NeoForge's own main class. Loads HitBoy mods
+     * only; NeoForge owns Mixin, so HitBoy's Mixin, access-widener, and Fabric steps are skipped there.
+     */
+    public static void initializeForNeoForge() {
+        try {
+            setupMods(new String[0], true);
+        } catch (Throwable failure) {
+            System.err.println("HitBoy could not start on NeoForge: " + failure);
+            failure.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) throws Exception {
-        System.out.println("HitBoy's Mod Loader v1.0.0 - Bootstrap");
+        java.nio.file.Path fabricMods = setupMods(args, false);
+        runMinecraft(args, fabricMods);
+    }
+
+    private static java.nio.file.Path setupMods(String[] args, boolean neoForgeBase) throws Exception {
+        System.out.println("HitBoy's Mod Loader v1.0.0 - Bootstrap" + (neoForgeBase ? " (on NeoForge)" : ""));
         String mappingsPath = System.getProperty("hitboy.mappings", "mappings.json");
         Map<String, String> mappings = loadMappings(mappingsPath);
         EventBus eventBus = new EventBus();
@@ -43,14 +61,16 @@ public class NativeLoader {
         java.nio.file.Path fabricMods = null;
         try {
             new InstanceVerifier().requireCompatibleHitBoyMods(md.toPath());
-            if (com.hitboy.loader.fabric.FabricRuntime.enabled()) {
+            if (com.hitboy.loader.fabric.FabricRuntime.enabled() && !neoForgeBase) {
                 // Mixed-compatibility mode: Fabric mods run next to HitBoy mods.
                 fabricMods = com.hitboy.loader.fabric.FabricRuntime.prepare(
                     md.toPath(), System.getProperty("hitboy.game-version", "1.21.11"), args);
             }
             GameAgent.appendHitBoyModsToClasspath(md.toPath());
             if (fabricMods != null) GameAgent.appendHitBoyModsToClasspath(fabricMods);
-            if (com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) {
+            if (neoForgeBase) {
+                // NeoForge applies Mixins itself; a second Mixin environment would conflict.
+            } else if (com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) {
                 // 26.x: HitBoy's own Mixin/access-widener mods (such as Meteor) target 1.21.11 names, so only
                 // Fabric mods built for this version get Mixins and access wideners.
                 OptionalAccessWidenerRuntime.initialize(fabricMods);
@@ -68,7 +88,12 @@ public class NativeLoader {
         String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
         String gameDir = gameDirectory;
         System.out.println("Loader initialized with " + modManager.getLoadedModCount() + " mods for " + gameVersion);
+        return fabricMods;
+    }
 
+    private static void runMinecraft(String[] args, java.nio.file.Path fabricMods) throws Exception {
+        EventBus eventBus = GLOBAL_BUS;
+        ModManager modManager = GLOBAL_MANAGER;
         // If we were launched as wrapper for Minecraft, delegate to real Minecraft main
         String mcMain = System.getProperty("hitboy.minecraft.main", "net.minecraft.client.main.Main");
         if (!mcMain.isEmpty()) {

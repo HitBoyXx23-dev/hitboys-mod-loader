@@ -39,14 +39,18 @@ inherited `<version>-HitBoy` version profile, an empty placeholder JAR, a
 `hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar` as a local library. See
 [OFFICIAL_PATCH.md](OFFICIAL_PATCH.md).
 
-## Fabric mods (mixed compatibility)
+## Fabric and NeoForge mods (mixed compatibility)
 
 `hitboy-mixed-mod-compatibility.exe` (or the patcher's **Mixed Compatibility**
 option) runs **Fabric mods and Fabric API next to HitBoy mods** on Minecraft
 1.21.11, 26.2, and 26.3, with no Fabric Loader installed. Tested in worlds with
 Fabric API, Sodium + Iris, and Lithium (1.21.11 and 26.3), plus FerriteCore,
-Krypton, and ImmediatelyFast (1.21.11). Forge and
-NeoForge mods are not run yet. See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
+Krypton, and ImmediatelyFast (1.21.11).
+
+The patcher's **Also install NeoForge** option installs the real NeoForge and adds
+a "HitBoy's Mod Loader + NeoForge" installation, so **NeoForge mods and HitBoy
+mods run together** (tested on 26.3 with Jade and AppleSkin). Forge mods are not
+run yet. See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
 
 ## Quick start
 
@@ -98,6 +102,6 @@ it switches to mixed mode from its file name.
   official mappings before 1.14.4.
 - Other Minecraft releases are blocked until they are mapped and tested.
 - Fabric mods run in mixed-compatibility mode on 1.21.11, 26.2, and 26.3
-  ([MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md)). Forge and NeoForge JARs are
-  skipped, not loaded.
+  ([MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md)). NeoForge mods run through the
+  patcher's NeoForge option. Forge JARs are skipped, not loaded.
 - Native mods run in the client JVM. Install only trusted JARs.

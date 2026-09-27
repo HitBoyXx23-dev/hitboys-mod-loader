@@ -29,7 +29,9 @@ public class MinecraftHooks {
         EventBus bus = NativeLoader.getEventBus();
         if (bus != null) {
             bus.postEvent("tick", minecraft);
-            bus.postEvent("render", minecraft); // also force render for HUD when render hook misses obfuscated name
+            // Fallback render event for obfuscated versions whose render hook can miss. HitBoy HUD mods draw
+            // with 1.21.11 APIs; calling them on 26.x (no HUD hooks yet) crashes natively, so skip it there.
+            if (!com.hitboy.loader.mixin.HitBoyIntermediaryRemapper.isUnobfuscated()) bus.postEvent("render", minecraft);
         }
     }
     public static void onRenderTick(Object minecraft) {

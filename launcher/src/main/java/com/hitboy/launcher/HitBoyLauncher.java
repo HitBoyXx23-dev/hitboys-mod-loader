@@ -32,6 +32,7 @@ public class HitBoyLauncher {
     private String mappingsFile;
     private boolean installOfficialPatch;
     private boolean mixedCompatibility;
+    private boolean neoForge;
     private String officialGameDirectory;
 
     public static void main(String[] args) {
@@ -176,6 +177,7 @@ public class HitBoyLauncher {
                 case "--download-only": downloadOnly = true; break;
                 case "--install-official-patch": installOfficialPatch = true; break;
                 case "--mixed-compatibility": mixedCompatibility = true; break;
+                case "--neoforge": neoForge = true; break;
                 case "--official-game-dir": if (i+1 < args.length) officialGameDirectory = args[++i]; break;
                 default: break;
             }
@@ -202,6 +204,7 @@ public class HitBoyLauncher {
         System.out.println("  --mods-dir <dir>  Mods directory");
         System.out.println("  --mappings <file> Mojang mappings");
         System.out.println("  --install-official-patch  Install a <version>-HitBoy profile into .minecraft (like the Fabric installer)");
+        System.out.println("  --neoforge                With --install-official-patch: also install NeoForge and run it with HitBoy");
         System.out.println("  --official-game-dir <dir> Official Minecraft directory (default: %APPDATA%\\.minecraft)");
         System.out.println("No args = GUI mode (persistent window)");
     }
@@ -212,6 +215,12 @@ public class HitBoyLauncher {
                 ? com.hitboy.launcher.minecraft.OfficialPatchInstaller.defaultOfficialGameDirectory()
                 : new File(officialGameDirectory);
             File loaderJar = findLoaderJar();
+            if (neoForge) {
+                com.hitboy.launcher.minecraft.NeoForgeInstaller.install(gameDirectory, loaderJar, minecraftVersion);
+                System.out.println("Restart the official Minecraft Launcher and select the \""
+                    + com.hitboy.launcher.minecraft.NeoForgeInstaller.profileName(minecraftVersion) + "\" installation.");
+                return;
+            }
             com.hitboy.launcher.minecraft.OfficialPatchInstaller.install(
                 gameDirectory, loaderJar, minecraftVersion, mixedCompatibility
             );
