@@ -12,7 +12,8 @@ struct PatcherApp {
     version: String,
     minecraft_dir: String,
     mixed_compatibility: bool,
-    neoforge: bool,
+    /// "" (none), "neoforge", or "forge": a real loader installed under HitBoy.
+    base: &'static str,
     status: String,
     running: bool,
     receiver: Option<Receiver<String>>,
@@ -47,7 +48,7 @@ impl PatcherApp {
             version: VERSIONS[0].to_string(),
             minecraft_dir: default_minecraft_dir(),
             mixed_compatibility: false,
-            neoforge: false,
+            base: "",
             status: "Choose a Minecraft version and your .minecraft folder, then click Install.".to_string(),
             running: false,
             receiver: None,
@@ -62,9 +63,9 @@ impl PatcherApp {
         let version = self.version.clone();
         let minecraft_dir = self.minecraft_dir.clone();
         let mixed_compatibility = self.mixed_compatibility;
-        let neoforge = self.neoforge;
+        let base = self.base;
         std::thread::spawn(move || {
-            let result = install_profile(&version, &minecraft_dir, mixed_compatibility, neoforge);
+            let result = install_profile(&version, &minecraft_dir, mixed_compatibility, base);
             let _ = sender.send(result);
         });
     }
@@ -108,9 +109,14 @@ impl eframe::App for PatcherApp {
                     ui.label(egui::RichText::new(
                         "Mixed also runs Fabric mods and Fabric API next to HitBoy mods."
                     ).small().color(egui::Color32::GRAY));
-                    ui.checkbox(&mut self.neoforge, "Also install NeoForge (run NeoForge mods with HitBoy)");
+                    ui.horizontal(|ui| {
+                        ui.label("Also install:");
+                        ui.radio_value(&mut self.base, "", "Nothing");
+                        ui.radio_value(&mut self.base, "neoforge", "NeoForge");
+                        ui.radio_value(&mut self.base, "forge", "Forge");
+                    });
                     ui.label(egui::RichText::new(
-                        "Downloads NeoForge's official installer and adds a \"HitBoy's Mod Loader + NeoForge\" installation."
+                        "Downloads the loader's official installer and adds a \"HitBoy's Mod Loader + NeoForge/Forge\" installation that runs its mods with HitBoy's."
                     ).small().color(egui::Color32::GRAY));
                     ui.add_space(12.0);
                     let label = format!("Install {}-HitBoy", self.version);
@@ -134,7 +140,7 @@ impl eframe::App for PatcherApp {
     }
 }
 
-fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str, minecraft_dir: &str, mixed_compatibility: bool, neoforge: bool) -> Command {
+fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str, minecraft_dir: &str, mixed_compatibility: bool, base: &str) -> Command {
     let mut command = Command::new(java);
     command
         .arg("-jar")
@@ -147,13 +153,13 @@ fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str,
     if mixed_compatibility {
         command.arg("--mixed-compatibility");
     }
-    if neoforge {
-        command.arg("--neoforge");
+    if !base.is_empty() {
+        command.arg(format!("--{base}"));
     }
     command
 }
 
-fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool, neoforge: bool) -> String {
+fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool, base: &str) -> String {
     let jar = match launcher_jar() {
         Ok(path) => path,
         Err(error) => return format!("Could not prepare embedded launcher: {error}"),
@@ -162,7 +168,7 @@ fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool
         Ok(path) => path,
         Err(error) => return error,
     };
-    let mut command = install_command(&java, &jar, version, minecraft_dir, mixed_compatibility, neoforge);
+    let mut command = install_command(&java, &jar, version, minecraft_dir, mixed_compatibility, base);
     no_window(&mut command);
     match command.output() {
         Ok(result) => {
@@ -197,7 +203,7 @@ mod tests {
             "26.3",
             "C:\\Users\\Player\\AppData\\Roaming\\.minecraft",
             false,
-            false,
+            "",
         );
         let arguments: Vec<_> = command.get_args().collect();
         assert_eq!(

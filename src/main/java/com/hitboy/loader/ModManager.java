@@ -82,6 +82,9 @@ public class ModManager {
                 if (jar.getJarEntry("fabric.mod.json") != null && com.hitboy.loader.fabric.FabricRuntime.enabled()) {
                     return null; // run by the Fabric runtime in mixed-compatibility mode
                 }
+                if (!System.getProperty("hitboy.base", "").isEmpty()) {
+                    return null; // run by the NeoForge/Forge base loader
+                }
                 System.err.println(
                     "Skipping incompatible mod JAR (missing hitboy.json): " + jarPath.getFileName()
                 );

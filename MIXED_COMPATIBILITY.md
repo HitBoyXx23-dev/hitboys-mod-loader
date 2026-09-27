@@ -1,4 +1,4 @@
-# Mixed compatibility: Fabric and NeoForge mods on HitBoy
+# Mixed compatibility: Fabric, NeoForge, and Forge mods on HitBoy
 
 HitBoy's mixed-compatibility mode runs **Fabric mods next to HitBoy mods**, with
 no Fabric Loader installed. Put the Fabric mod JARs (and Fabric API, if a mod
@@ -11,7 +11,7 @@ needs it) in the same mods folder as your HitBoy mods.
 | Fabric API | Supported: the real Fabric API JAR runs as ordinary Fabric mods |
 | NeoForge mods | Supported through the patcher's NeoForge option (runs the real NeoForge with HitBoy) |
 | Fabric + NeoForge in one game | Not yet |
-| Forge mods | Not yet (skipped, never crash the game) |
+| Forge mods | Supported through the patcher's Forge option (runs the real Forge with HitBoy) |
 
 ## Turning it on
 
@@ -49,6 +49,18 @@ Tested on Minecraft 26.3 with NeoForge 26.3.0.23-beta, Jade 26.3.1, AppleSkin
 NeoForge 26.3 is still in beta. On the test PC it sometimes crashed natively while
 loading resources, **with or without HitBoy** (plain NeoForge crashed in 2 of 3
 runs), so that crash comes from NeoForge's beta rather than from HitBoy.
+
+
+## Forge mods
+
+The patcher's **Also install: Forge** option works exactly like the NeoForge one:
+it runs Forge's official installer (the recommended build for your Minecraft
+version, or the latest when none is recommended yet), then adds a
+**"Minecraft `<version>`/HitBoy's Mod Loader + Forge"** installation. Put Forge
+mods and HitBoy mods together in `.minecraft\mods`.
+
+Tested on Minecraft 26.3 with Forge 66.0.5, Xaero's Minimap 26.5.3, and Mouse
+Tweaks 2.31, in a world.
 
 ## Tested mods
 
@@ -117,9 +129,11 @@ you know which other JARs to install.
 
 ## Known limits
 
-- Fabric mods and NeoForge mods do not run in the same game yet (use one or the
-  other alongside HitBoy mods). Forge mods are not run.
-- On NeoForge, HitBoy's own Mixin mods are skipped: NeoForge owns Mixin there.
+- Fabric, NeoForge, and Forge mods do not run in the same game yet (use one of
+  them alongside HitBoy mods).
+- On NeoForge and Forge, HitBoy's own Mixin mods are skipped: the base loader owns Mixin there.
+- On NeoForge and Forge, HitBoy's button is labelled **HitBoy Mods** and sits in the
+  top-left corner of the title screen, because the loader has its own Mods button next to Realms.
 - On 26.x, HitBoy's own Mixin mods built for 1.21.11 (such as Meteor Client HitBoy
   Edition) are skipped; Fabric mods built for 26.x run normally.
 - Fabric mods' server-only entrypoints are not called; HitBoy is a client loader.

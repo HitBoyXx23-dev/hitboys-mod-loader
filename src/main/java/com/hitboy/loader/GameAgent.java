@@ -176,8 +176,9 @@ public class GameAgent {
             }
         });
         System.out.println("HitBoy's Mod Loader transformers registered");
-        if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base"))) {
-            // NeoForge keeps its own main class; HitBoy loads its mods here, before NeoForge starts.
+        String base = System.getProperty("hitboy.base", "");
+        if (base.equalsIgnoreCase("neoforge") || base.equalsIgnoreCase("forge")) {
+            // NeoForge/Forge keep their own main class; HitBoy loads its mods here, before they start.
             NativeLoader.initializeForNeoForge();
         }
     }
@@ -623,7 +624,10 @@ public class GameAgent {
         }
     }
     private static boolean hookTitleScreen(ClassNode cn, boolean isTitle) {
-        isTitle = isTitle || cn.name.contains("TitleScreen") || cn.name.contains("GuiMainMenu") || cn.name.contains("MainMenuScreen") || cn.name.toLowerCase().contains("titlescreen");
+        // Name matching is for old mapped versions; loader classes such as Forge's
+        // "TitleScreenModUpdateIndicator" must not match, only Minecraft's own title screen.
+        boolean loaderClass = cn.name.startsWith("net/minecraftforge/") || cn.name.startsWith("net/neoforged/");
+        isTitle = isTitle || (!loaderClass && (cn.name.contains("TitleScreen") || cn.name.contains("GuiMainMenu") || cn.name.contains("MainMenuScreen") || cn.name.toLowerCase().contains("titlescreen")));
         // Also handle obfuscated: check if class has string "TitleScreen" or has panorama rendering
         if (!isTitle) return false;
         if ("gsd".equals(cn.name)) {

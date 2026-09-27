@@ -76,6 +76,7 @@ public final class InstanceVerifier {
                 hitBoyIds.add(descriptor.getId());
             } else {
                 if (descriptor.getSourceLoader() == SourceLoader.FABRIC && com.hitboy.loader.fabric.FabricRuntime.enabled()) continue;
+                if (!System.getProperty("hitboy.base", "").isEmpty()) continue; // run by NeoForge/Forge
                 System.out.println("Skipping " + descriptor.getSourceLoader() + " mod (not a HitBoy mod): " + jarName);
             }
         }

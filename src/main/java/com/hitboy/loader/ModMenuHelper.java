@@ -45,7 +45,8 @@ public final class ModMenuHelper {
                 return;
             }
         }
-        String label = "Mods";
+        // On NeoForge/Forge the loader has its own Mods button, so HitBoy's is named apart from it.
+        String label = System.getProperty("hitboy.base", "").isEmpty() ? "Mods" : "HitBoy Mods";
         if (tryInjectNamedButton(titleScreen, label)
             || tryInjectObfuscated12111Button(titleScreen, label)
             || tryInjectObfuscated1201Button(titleScreen, label)) {
@@ -99,6 +100,8 @@ public final class ModMenuHelper {
                 // not a button with these accessors
             }
         }
+        // NeoForge/Forge already split the Realms row with their own Mods button; use the top-left corner.
+        if (!System.getProperty("hitboy.base", "").isEmpty()) return new int[] {4, 4, 98};
         return new int[] {x, y, 200};
     }
 

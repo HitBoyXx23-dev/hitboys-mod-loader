@@ -30,7 +30,7 @@ public class NativeLoader {
     }
 
     private static java.nio.file.Path setupMods(String[] args, boolean neoForgeBase) throws Exception {
-        System.out.println("HitBoy's Mod Loader v1.0.0 - Bootstrap" + (neoForgeBase ? " (on NeoForge)" : ""));
+        System.out.println("HitBoy's Mod Loader v1.0.0 - Bootstrap" + (neoForgeBase ? " (on " + System.getProperty("hitboy.base") + ")" : ""));
         String mappingsPath = System.getProperty("hitboy.mappings", "mappings.json");
         Map<String, String> mappings = loadMappings(mappingsPath);
         EventBus eventBus = new EventBus();
