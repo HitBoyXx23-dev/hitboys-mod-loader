@@ -189,7 +189,7 @@ public final class FabricRuntime implements FabricLoader {
                 for (String dependency : mod.requiredDependencies()) {
                     if (BUILT_IN.contains(dependency) || isModLoaded(dependency)) continue;
                     String reason = insideNeoForge && isFabricApiModule(dependency)
-                        ? ", part of Fabric API, which does not run inside NeoForge yet"
+                        ? ", part of Fabric API, which is skipped in games with NeoForge or Forge mods"
                         : ", which is not installed" + (dependency.startsWith("fabric") ? " (Fabric API is not supported yet)" : "");
                     System.err.println("[HitBoy Fabric] Skipping " + mod + ": it needs \"" + dependency + "\"" + reason + ".");
                     mods.remove(mod.getId());
@@ -268,7 +268,8 @@ public final class FabricRuntime implements FabricLoader {
             if (isFabricApiModule(mod.getId())) mods.remove(mod.getId());
         }
         if (found.stream().anyMatch(mod -> isFabricApiModule(mod.getId()))) {
-            System.out.println("[HitBoy Fabric] Fabric API does not run inside NeoForge yet; it is skipped in this game.");
+            System.out.println("[HitBoy Fabric] Fabric API is skipped: this game has NeoForge or Forge mods, so NeoForge runs underneath, and Fabric API"
+                + " does not run inside NeoForge yet. Without NeoForge and Forge mods, HitBoy runs Fabric API itself.");
         }
         insideNeoForge = true;
         dropModsWithMissingDependencies();

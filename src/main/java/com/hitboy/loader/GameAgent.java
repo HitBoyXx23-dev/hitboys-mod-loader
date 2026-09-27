@@ -144,6 +144,9 @@ public class GameAgent {
                 if ("net/neoforged/fml/loading/moddiscovery/locators/ModsFolderLocator".equals(className)) {
                     return patchNeoForgeModsFolder(buf);
                 }
+                if ("net/neoforged/fml/startup/Client".equals(className) && MixedEngine.hitBoyEngine()) {
+                    return handOverFromNeoForge(buf);
+                }
                 if ("net/neoforged/neoforge/internal/BrandingControl".equals(className) && HitBoyBranding.mixedEngine()) {
                     return rebrandNeoForge(buf);
                 }
@@ -193,6 +196,7 @@ public class GameAgent {
             }
         });
         System.out.println("HitBoy's Mod Loader transformers registered");
+        MixedEngine.chooseHitBoyEngine();
         String base = System.getProperty("hitboy.base", "");
         if (base.equalsIgnoreCase("fabric")) shareWithFabricLoader();
         if (base.equalsIgnoreCase("neoforge") || base.equalsIgnoreCase("forge") || base.equalsIgnoreCase("fabric")) {
@@ -262,6 +266,28 @@ public class GameAgent {
         } catch (Exception failed) {
             System.err.println("HitBoy could not register with Fabric Loader: " + failed);
         }
+    }
+
+    /** Mixed mode on HitBoy's own engine: NeoForge's startup class hands the game straight to HitBoy. */
+    private static byte[] handOverFromNeoForge(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        for (MethodNode method : node.methods) {
+            if (!method.name.equals("main") || !method.desc.equals("([Ljava/lang/String;)V")) continue;
+            InsnList handOver = new InsnList();
+            LabelNode neoForge = new LabelNode();
+            handOver.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            handOver.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/NativeLoader", "runInsteadOfNeoForge", "([Ljava/lang/String;)Z", false));
+            handOver.add(new JumpInsnNode(Opcodes.IFEQ, neoForge));
+            handOver.add(new InsnNode(Opcodes.RETURN));
+            handOver.add(neoForge);
+            handOver.add(new FrameNode(Opcodes.F_SAME, 0, null, 0, null));
+            method.instructions.insert(handOver);
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            node.accept(writer);
+            return writer.toByteArray();
+        }
+        return null;
     }
 
     /** Mixed mode: NeoForge's title-screen lines and brand go through {@link HitBoyBranding}. */

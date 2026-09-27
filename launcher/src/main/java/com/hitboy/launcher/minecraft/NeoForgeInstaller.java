@@ -18,9 +18,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Installs HitBoy on top of NeoForge: runs NeoForge's own installer into .minecraft, then adds an
- * installation that inherits the NeoForge version and adds HitBoy as a Java agent. NeoForge keeps its
- * own main class and runs NeoForge mods; HitBoy's agent loads HitBoy mods before NeoForge starts.
+ * Installs HitBoy's Mixed Compatible Mod Loader for Minecraft 26.x: runs NeoForge's own installer into
+ * .minecraft, then adds an installation that inherits the NeoForge version and attaches HitBoy as a Java
+ * agent. NeoForge runs underneath so NeoForge mods can run; HitBoy runs HitBoy, Fabric, and (ported)
+ * Forge mods next to them, and the game shows HitBoy's Mixed Compatible Mod Loader (see HitBoyBranding).
  *
  * <p>HitBoy is attached only as {@code -javaagent} (not as a library) because the launcher puts a
  * profile's own libraries first, and NeoForge's loader must come before HitBoy's bundled Mixin/ASM.
@@ -31,53 +32,34 @@ public final class NeoForgeInstaller {
     private NeoForgeInstaller() {
     }
 
-    public static String versionId(String minecraftVersion) {
-        return minecraftVersion + "-HitBoy-NeoForge";
-    }
-
-    public static String profileName(String minecraftVersion) {
-        return "Minecraft " + minecraftVersion + "/HitBoy's Mod Loader + NeoForge";
-    }
-
     public static String mixedVersionId(String minecraftVersion) {
-        return minecraftVersion + "-HitBoy-Mixed";
+        return OfficialPatchInstaller.versionId(minecraftVersion, true);
     }
 
     public static String mixedProfileName(String minecraftVersion) {
-        return "Minecraft " + minecraftVersion + "/HitBoy's Mixed Compatible Mod Loader";
+        return OfficialPatchInstaller.profileName(minecraftVersion, true);
     }
 
-    /**
-     * HitBoy's Mixed Compatible Mod Loader (26.x): NeoForge runs underneath so NeoForge mods can run, and
-     * HitBoy runs HitBoy mods, Fabric mods, and (ported) Forge mods next to them. The game shows HitBoy's
-     * Mixed Compatible Mod Loader, not NeoForge (see HitBoyBranding).
-     */
     public static void installMixed(File officialGameDirectory, File loaderJar, String minecraftVersion) throws IOException {
-        install(officialGameDirectory, loaderJar, minecraftVersion, true);
-    }
-
-    public static void install(File officialGameDirectory, File loaderJar, String minecraftVersion) throws IOException {
-        install(officialGameDirectory, loaderJar, minecraftVersion, false);
-    }
-
-    private static void install(File officialGameDirectory, File loaderJar, String minecraftVersion, boolean mixed) throws IOException {
-        // Shared steps: HitBoy library, data folder, mods folder, and checks.
-        OfficialPatchInstaller.install(officialGameDirectory, loaderJar, minecraftVersion, false);
+        OfficialPatchInstaller.prepareShared(officialGameDirectory, loaderJar, minecraftVersion);
 
         String neoForgeVersion = latestNeoForge(minecraftVersion);
-        System.out.println("Installing NeoForge " + neoForgeVersion + " for Minecraft " + minecraftVersion + "...");
+        System.out.println("Installing NeoForge " + neoForgeVersion + " (runs underneath HitBoy's Mixed Compatible Mod Loader)...");
+        java.util.Set<String> before = OfficialPatchInstaller.launcherProfileKeys(officialGameDirectory);
         runNeoForgeInstaller(officialGameDirectory, neoForgeVersion);
+        // NeoForge's installer adds its own "NeoForge" installation; NeoForge only runs underneath HitBoy here.
+        OfficialPatchInstaller.removeLauncherProfilesExcept(officialGameDirectory, before);
 
-        String versionId = mixed ? mixedVersionId(minecraftVersion) : versionId(minecraftVersion);
-        String profileName = mixed ? mixedProfileName(minecraftVersion) : profileName(minecraftVersion);
+        String versionId = mixedVersionId(minecraftVersion);
+        String profileName = mixedProfileName(minecraftVersion);
         File versionDirectory = new File(officialGameDirectory, "versions" + File.separator + versionId);
         Files.createDirectories(versionDirectory.toPath());
         Files.writeString(new File(versionDirectory, versionId + ".json").toPath(),
-            OfficialPatchInstaller.GSON.toJson(profileJson(minecraftVersion, neoForgeVersion, versionId, mixed)));
+            OfficialPatchInstaller.GSON.toJson(profileJson(minecraftVersion, neoForgeVersion)));
         File placeholder = new File(versionDirectory, versionId + ".jar");
         if (!placeholder.exists()) Files.write(placeholder.toPath(), new byte[0]);
         OfficialPatchInstaller.addLauncherProfile(officialGameDirectory, versionId, profileName);
-        System.out.println("Installed \"" + profileName + "\"" + (mixed ? " (runs NeoForge " + neoForgeVersion + " underneath)." : " (NeoForge " + neoForgeVersion + ")."));
+        System.out.println("Installed \"" + profileName + "\" (runs NeoForge " + neoForgeVersion + " underneath).");
     }
 
     /**
@@ -87,9 +69,7 @@ public final class NeoForgeInstaller {
     static String latestNeoForge(String minecraftVersion) throws IOException {
         String prefix = minecraftVersion.startsWith("1.") ? minecraftVersion.substring(2) + "." : minecraftVersion + ".";
         String metadata;
-        try (InputStream input = new URL(MAVEN + "maven-metadata.xml").openStream()) {
-            metadata = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-        }
+        metadata = new String(download(MAVEN + "maven-metadata.xml"), StandardCharsets.UTF_8);
         List<String> matching = new ArrayList<>();
         Matcher matcher = Pattern.compile("<version>([^<]+)</version>").matcher(metadata);
         while (matcher.find()) {
@@ -103,13 +83,38 @@ public final class NeoForgeInstaller {
         return matching.get(matching.size() - 1);
     }
 
+    /** Downloads with a real user agent, timeouts, and a few retries (NeoForge's server sometimes refuses a request). */
+    private static byte[] download(String url) throws IOException {
+        IOException last = null;
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            try {
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) new URL(url).openConnection();
+                connection.setRequestProperty("User-Agent", "HitBoysModLoader/1.0 (+https://github.com/HitBoyXx23-dev/hitboys-mod-loader)");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(60000);
+                int status = connection.getResponseCode();
+                if (status != 200) throw new IOException("HTTP " + status);
+                try (InputStream input = connection.getInputStream()) {
+                    return input.readAllBytes();
+                }
+            } catch (IOException failure) {
+                last = failure;
+                try {
+                    Thread.sleep(1500L * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        throw new IOException("Could not download " + url + " (" + (last == null ? "interrupted" : last.getMessage()) + "). Check the internet connection and try again.", last);
+    }
+
     static void runNeoForgeInstaller(File officialGameDirectory, String neoForgeVersion) throws IOException {
         Path installer = Files.createTempFile("neoforge-installer-", ".jar");
         try {
             String url = MAVEN + neoForgeVersion + "/neoforge-" + neoForgeVersion + "-installer.jar";
-            try (InputStream input = new URL(url).openStream()) {
-                Files.copy(input, installer, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(installer, download(url));
             String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
             Process process = new ProcessBuilder(java, "-jar", installer.toString(), "--install-client",
                 officialGameDirectory.getAbsolutePath())
@@ -133,12 +138,8 @@ public final class NeoForgeInstaller {
     }
 
     static JsonObject profileJson(String minecraftVersion, String neoForgeVersion) {
-        return profileJson(minecraftVersion, neoForgeVersion, versionId(minecraftVersion), false);
-    }
-
-    static JsonObject profileJson(String minecraftVersion, String neoForgeVersion, String versionId, boolean mixed) {
         JsonObject profile = new JsonObject();
-        profile.addProperty("id", versionId);
+        profile.addProperty("id", mixedVersionId(minecraftVersion));
         profile.addProperty("inheritsFrom", "neoforge-" + neoForgeVersion);
         profile.addProperty("releaseTime", Instant.now().toString());
         profile.addProperty("time", Instant.now().toString());
@@ -150,7 +151,7 @@ public final class NeoForgeInstaller {
         JsonArray jvm = new JsonArray();
         jvm.add("-javaagent:${library_directory}/" + OfficialPatchInstaller.PATCH_LIBRARY_PATH + "=" + home + "/mappings.json");
         jvm.add("-Dhitboy.base=neoforge");
-        if (mixed) jvm.add("-Dhitboy.mixed-compatibility=true");
+        jvm.add("-Dhitboy.mixed-compatibility=true");
         jvm.add("-Dhitboy.game-version=" + minecraftVersion);
         jvm.add("-Dhitboy.game-directory=${game_directory}");
         jvm.add("-Dhitboy.home=" + home);

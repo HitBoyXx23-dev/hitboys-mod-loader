@@ -76,9 +76,17 @@ public final class InstanceVerifier {
                 hitBoyIds.add(descriptor.getId());
             } else {
                 String base = System.getProperty("hitboy.base", "");
-                if (base.isEmpty()) {
-                    if (descriptor.getSourceLoader() == SourceLoader.FABRIC && com.hitboy.loader.fabric.FabricRuntime.enabled()) continue;
-                    System.out.println("Skipping " + descriptor.getSourceLoader() + " mod (not a HitBoy mod): " + jarName);
+                boolean mixed = com.hitboy.loader.fabric.FabricRuntime.enabled();
+                if (!mixed && base.isEmpty()) {
+                    System.out.println("Skipping " + descriptor.getSourceLoader() + " mod " + jarName + ": HitBoy's Mod Loader runs HitBoy mods only."
+                        + " Use HitBoy's Mixed Compatible Mod Loader for Fabric, NeoForge, and Forge mods.");
+                } else if (mixed && base.isEmpty()) {
+                    // 1.21.x mixed mode runs HitBoy and Fabric mods (NeoForge/Forge mixing needs 26.x).
+                    if (descriptor.getSourceLoader() == SourceLoader.FABRIC) continue;
+                    System.out.println("Skipping " + descriptor.getSourceLoader() + " mod " + jarName
+                        + ": on this Minecraft version the Mixed Compatible Mod Loader runs HitBoy and Fabric mods (NeoForge and Forge mods: 26.x).");
+                } else if (mixed) {
+                    continue; // 26.x mixed: NeoForge runs NeoForge mods, HitBoy converts Fabric mods and ports Forge mods
                 } else if (!descriptor.getSourceLoader().name().equalsIgnoreCase(base)
                     && !((descriptor.getSourceLoader() == SourceLoader.FABRIC || descriptor.getSourceLoader() == SourceLoader.FORGE)
                         && base.equalsIgnoreCase("neoforge"))) {

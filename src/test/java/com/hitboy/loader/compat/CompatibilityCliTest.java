@@ -51,7 +51,7 @@ class CompatibilityCliTest {
         );
 
         assertEquals(0, exitCode);
-        assertTrue(outputBytes.toString(StandardCharsets.UTF_8).contains("mixed-compatibility mode runs Fabric mods"));
+        assertTrue(outputBytes.toString(StandardCharsets.UTF_8).contains("Mixed Compatible Mod Loader runs Fabric mods"));
     }
 
     private void writeJar(Path path, String descriptor, String content) throws Exception {

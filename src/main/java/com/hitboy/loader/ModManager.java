@@ -79,8 +79,9 @@ public class ModManager {
         try (JarFile jar = new JarFile(jarPath.toFile())) {
             JarEntry descriptor = jar.getJarEntry("hitboy.json");
             if (descriptor == null) {
-                if (jar.getJarEntry("fabric.mod.json") != null && com.hitboy.loader.fabric.FabricRuntime.enabled()) {
-                    return null; // run by the Fabric runtime in mixed-compatibility mode
+                if (jar.getJarEntry("fabric.mod.json") != null || jar.getJarEntry("META-INF/mods.toml") != null
+                    || jar.getJarEntry("META-INF/neoforge.mods.toml") != null) {
+                    return null; // another loader's mod: the compatibility check already said how it is handled
                 }
                 if (!System.getProperty("hitboy.base", "").isEmpty()) {
                     return null; // run by the NeoForge/Forge base loader

@@ -22,6 +22,11 @@ Supported versions: **26.3**, **26.2**, **1.21.11**, **1.20.1**, **1.16.5**.
 
    Add `--official-game-dir <dir>` to target a different `.minecraft` folder.
 
+   To install **HitBoy's Mixed Compatible Mod Loader** instead (HitBoy mods plus
+   Fabric, NeoForge, and Forge mods), tick **Install HitBoy's Mixed Compatible
+   Mod Loader instead** in the patcher, or add `--mixed-compatibility`. It is a
+   separate `<version>-HitBoy-Mixed` installation, so both can be installed.
+
 3. Restart the official Minecraft Launcher, select the **Minecraft &lt;version&gt;/HitBoy's Mod Loader**
    installation, and play. The launcher downloads the vanilla base version
    automatically if it is not installed yet.
@@ -35,9 +40,14 @@ Like Fabric, the patcher only adds files:
 .minecraft\versions\<version>-HitBoy\<version>-HitBoy.jar    empty placeholder JAR
 .minecraft\libraries\com\hitboy\hitboys-mod-loader-patch\1.0.0-SNAPSHOT\hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar
 .minecraft\launcher_profiles.json                              "Minecraft <version>/HitBoy's Mod Loader" entry
-.minecraft\mods\                                               HitBoy mods
+.minecraft\mods\                                               mods
 .minecraft\.hitboys-modloader\                                 HitBoy data
 ```
+
+The mixed loader writes `versions\<version>-HitBoy-Mixed\` instead. On 26.x it
+also runs NeoForge's own installer (NeoForge runs underneath when the game has
+NeoForge or Forge mods) and removes the separate "NeoForge" entry that
+installer adds to the launcher.
 
 The version profile does not override the Java runtime, so the official
 Launcher uses the one the vanilla version asks for (Java 21 for 1.21.x,
@@ -48,7 +58,8 @@ Java 25 for 26.x).
 - HitBoy does not bypass Microsoft authentication, server authentication, or
   server-side mod requirements. Servers may reject any modified client, and
   anti-cheat/server rules still apply.
-- To uninstall, delete the **Minecraft &lt;version&gt;/HitBoy's Mod Loader** installation in the
-  official Launcher, then remove `versions\<version>-HitBoy\` and
+- To uninstall, delete the **Minecraft &lt;version&gt;/HitBoy's Mod Loader** (or Mixed
+  Compatible Mod Loader) installation in the official Launcher, then remove
+  `versions\<version>-HitBoy\` (or `-HitBoy-Mixed\`) and
   `libraries\com\hitboy\hitboys-mod-loader-patch\`. Do not delete any other
   files from the game directory.

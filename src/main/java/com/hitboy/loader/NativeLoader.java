@@ -24,6 +24,28 @@ public class NativeLoader {
         }
     }
 
+    /**
+     * Mixed installation on HitBoy's own engine (see {@link MixedEngine}): called at the start of NeoForge's
+     * startup class, runs vanilla Minecraft through HitBoy instead, and returns true so NeoForge never starts.
+     */
+    public static boolean runInsteadOfNeoForge(String[] args) {
+        if (!MixedEngine.hitBoyEngine()) return false;
+        java.util.List<String> gameArgs = new java.util.ArrayList<>();
+        for (int index = 0; index < args.length; index++) {
+            if (args[index].startsWith("--fml.")) {
+                if (index + 1 < args.length && !args[index + 1].startsWith("--")) index++;
+                continue;
+            }
+            gameArgs.add(args[index]);
+        }
+        try {
+            main(gameArgs.toArray(new String[0]));
+        } catch (Throwable failure) {
+            throw failure instanceof RuntimeException runtime ? runtime : new RuntimeException(failure);
+        }
+        return true;
+    }
+
     public static void main(String[] args) throws Exception {
         java.nio.file.Path fabricMods = setupMods(args, false);
         runMinecraft(args, fabricMods);
@@ -71,7 +93,9 @@ public class NativeLoader {
             if (neoForgeBase) {
                 // NeoForge applies Mixins itself; a second Mixin environment would conflict. On NeoForge,
                 // Fabric mods are converted into NeoForge mods and NeoForge applies their Mixins.
-                if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base", ""))) {
+                // Other loaders' mods run only in HitBoy's Mixed Compatible Mod Loader.
+                if ("neoforge".equalsIgnoreCase(System.getProperty("hitboy.base", ""))
+                    && com.hitboy.loader.fabric.FabricRuntime.enabled()) {
                     com.hitboy.loader.fabric.FabricRuntime.prepareForNeoForge(
                         md.toPath(), System.getProperty("hitboy.game-version", "26.3"));
                     com.hitboy.loader.compat.ForgeAutoPorter.prepare(

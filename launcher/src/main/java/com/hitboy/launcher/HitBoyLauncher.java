@@ -32,9 +32,6 @@ public class HitBoyLauncher {
     private String mappingsFile;
     private boolean installOfficialPatch;
     private boolean mixedCompatibility;
-    private boolean neoForge;
-    private boolean forge;
-    private boolean fabric;
     private String officialGameDirectory;
 
     public static void main(String[] args) {
@@ -179,9 +176,6 @@ public class HitBoyLauncher {
                 case "--download-only": downloadOnly = true; break;
                 case "--install-official-patch": installOfficialPatch = true; break;
                 case "--mixed-compatibility": mixedCompatibility = true; break;
-                case "--neoforge": neoForge = true; break;
-                case "--forge": forge = true; break;
-                case "--fabric": fabric = true; break;
                 case "--official-game-dir": if (i+1 < args.length) officialGameDirectory = args[++i]; break;
                 default: break;
             }
@@ -208,9 +202,8 @@ public class HitBoyLauncher {
         System.out.println("  --mods-dir <dir>  Mods directory");
         System.out.println("  --mappings <file> Mojang mappings");
         System.out.println("  --install-official-patch  Install a <version>-HitBoy profile into .minecraft (like the Fabric installer)");
-        System.out.println("  --neoforge                With --install-official-patch: also install NeoForge and run it with HitBoy");
-        System.out.println("  --fabric                  With --install-official-patch: also install Fabric Loader and run it with HitBoy");
-        System.out.println("  --forge                   With --install-official-patch: also install Forge and run it with HitBoy");
+        System.out.println("  --mixed-compatibility     With --install-official-patch: install HitBoy's Mixed Compatible Mod Loader");
+        System.out.println("                            (Fabric, NeoForge, and Forge mods next to HitBoy mods) instead of HitBoy's Mod Loader");
         System.out.println("  --official-game-dir <dir> Official Minecraft directory (default: %APPDATA%\\.minecraft)");
         System.out.println("No args = GUI mode (persistent window)");
     }
@@ -221,7 +214,7 @@ public class HitBoyLauncher {
                 ? com.hitboy.launcher.minecraft.OfficialPatchInstaller.defaultOfficialGameDirectory()
                 : new File(officialGameDirectory);
             File loaderJar = findLoaderJar();
-            if (mixedCompatibility && !minecraftVersion.startsWith("1.") && !fabric && !forge) {
+            if (mixedCompatibility && !minecraftVersion.startsWith("1.")) {
                 // 26.x: the mixed loader runs NeoForge underneath, so NeoForge, Fabric, Forge (ported), and HitBoy
                 // mods share one game. 1.21.x keeps the HitBoy + Fabric mixed mode below.
                 com.hitboy.launcher.minecraft.NeoForgeInstaller.installMixed(gameDirectory, loaderJar, minecraftVersion);
@@ -229,29 +222,12 @@ public class HitBoyLauncher {
                     + com.hitboy.launcher.minecraft.NeoForgeInstaller.mixedProfileName(minecraftVersion) + "\" installation.");
                 return;
             }
-            if (fabric) {
-                com.hitboy.launcher.minecraft.FabricInstaller.install(gameDirectory, loaderJar, minecraftVersion);
-                System.out.println("Restart the official Minecraft Launcher and select the \""
-                    + com.hitboy.launcher.minecraft.FabricInstaller.profileName(minecraftVersion) + "\" installation.");
-                return;
-            }
-            if (forge) {
-                com.hitboy.launcher.minecraft.ForgeInstaller.install(gameDirectory, loaderJar, minecraftVersion);
-                System.out.println("Restart the official Minecraft Launcher and select the \""
-                    + com.hitboy.launcher.minecraft.ForgeInstaller.profileName(minecraftVersion) + "\" installation.");
-                return;
-            }
-            if (neoForge) {
-                com.hitboy.launcher.minecraft.NeoForgeInstaller.install(gameDirectory, loaderJar, minecraftVersion);
-                System.out.println("Restart the official Minecraft Launcher and select the \""
-                    + com.hitboy.launcher.minecraft.NeoForgeInstaller.profileName(minecraftVersion) + "\" installation.");
-                return;
-            }
             com.hitboy.launcher.minecraft.OfficialPatchInstaller.install(
                 gameDirectory, loaderJar, minecraftVersion, mixedCompatibility
             );
-            System.out.println("Installed \"" + minecraftVersion + "-HitBoy\" in " + gameDirectory + ".");
-            System.out.println("Restart the official Minecraft Launcher and select the \"" + com.hitboy.launcher.minecraft.OfficialPatchInstaller.profileName(minecraftVersion) + "\" installation.");
+            String profileName = com.hitboy.launcher.minecraft.OfficialPatchInstaller.profileName(minecraftVersion, mixedCompatibility);
+            System.out.println("Installed \"" + profileName + "\" in " + gameDirectory + ".");
+            System.out.println("Restart the official Minecraft Launcher and select the \"" + profileName + "\" installation.");
         } catch (Exception e) {
             System.err.println("Could not install the HitBoy profile: " + e.getMessage());
             System.exit(1);

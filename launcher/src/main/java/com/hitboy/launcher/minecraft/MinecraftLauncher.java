@@ -29,7 +29,7 @@ public class MinecraftLauncher {
         if (!jarFile.exists()) throw new FileNotFoundException("Minecraft client JAR is missing: " + jarFile);
         jarFile = HitBoyClientJar.prepare(jarFile);
         JsonObject verJson = JsonParser.parseString(new String(Files.readAllBytes(jsonFile.toPath()))).getAsJsonObject();
-        if (mixedCompatibility() && !version.startsWith("1.")) {
+        if (mixedCompatibility() && !version.startsWith("1.") && com.hitboy.loader.MixedEngine.needsNeoForge(mixedModsDirectory().toPath())) {
             launchMixedOnNeoForge(version, username, ramMb, log, verJson, jarFile);
             return;
         }
@@ -119,6 +119,11 @@ public class MinecraftLauncher {
         int code = p.waitFor();
         log.accept("Minecraft exited with code " + code);
         if (code != 0) throw new IOException("Minecraft exited " + code);
+    }
+
+    private File mixedModsDirectory() {
+        String configured = com.hitboy.launcher.NavigationContext.getNativeModsDirectory();
+        return configured == null ? new File(baseDir(), "native_mods") : new File(configured);
     }
 
     private static boolean mixedCompatibility() {

@@ -12,8 +12,6 @@ struct PatcherApp {
     version: String,
     minecraft_dir: String,
     mixed_compatibility: bool,
-    /// "" (none), "neoforge", or "forge": a real loader installed under HitBoy.
-    base: &'static str,
     status: String,
     running: bool,
     receiver: Option<Receiver<String>>,
@@ -48,7 +46,6 @@ impl PatcherApp {
             version: VERSIONS[0].to_string(),
             minecraft_dir: default_minecraft_dir(),
             mixed_compatibility: false,
-            base: "",
             status: "Choose a Minecraft version and your .minecraft folder, then click Install.".to_string(),
             running: false,
             receiver: None,
@@ -63,9 +60,8 @@ impl PatcherApp {
         let version = self.version.clone();
         let minecraft_dir = self.minecraft_dir.clone();
         let mixed_compatibility = self.mixed_compatibility;
-        let base = self.base;
         std::thread::spawn(move || {
-            let result = install_profile(&version, &minecraft_dir, mixed_compatibility, base);
+            let result = install_profile(&version, &minecraft_dir, mixed_compatibility);
             let _ = sender.send(result);
         });
     }
@@ -105,22 +101,12 @@ impl eframe::App for PatcherApp {
                             self.minecraft_dir = default_minecraft_dir();
                         }
                     });
-                    ui.checkbox(&mut self.mixed_compatibility, "Install HitBoy's Mixed Compatible Mod Loader");
+                    ui.checkbox(&mut self.mixed_compatibility, "Install HitBoy's Mixed Compatible Mod Loader instead");
                     ui.label(egui::RichText::new(
-                        "26.x: installs HitBoy's Mixed Compatible Mod Loader, which runs HitBoy, Fabric, NeoForge, and Forge mods together (NeoForge runs underneath). 1.21.11: HitBoy + Fabric mods."
-                    ).small().color(egui::Color32::GRAY));
-                    ui.horizontal(|ui| {
-                        ui.label("Also install:");
-                        ui.radio_value(&mut self.base, "", "Nothing");
-                        ui.radio_value(&mut self.base, "fabric", "Fabric");
-                        ui.radio_value(&mut self.base, "neoforge", "NeoForge");
-                        ui.radio_value(&mut self.base, "forge", "Forge");
-                    });
-                    ui.label(egui::RichText::new(
-                        "Downloads the loader's official installer and adds a \"HitBoy's Mod Loader + Fabric/NeoForge/Forge\" installation that runs its mods with HitBoy's."
+                        "HitBoy's Mod Loader runs HitBoy mods only. The Mixed Compatible Mod Loader is for mods made for other loaders: on 26.x it runs HitBoy, Fabric, NeoForge, and Forge mods together (NeoForge runs underneath); on 1.21.11, HitBoy and Fabric mods. Each is its own installation."
                     ).small().color(egui::Color32::GRAY));
                     ui.add_space(12.0);
-                    let label = format!("Install {}-HitBoy", self.version);
+                    let label = if self.mixed_compatibility { format!("Install {}-HitBoy-Mixed", self.version) } else { format!("Install {}-HitBoy", self.version) };
                     if ui.add_enabled(!self.running, egui::Button::new(label).min_size([260.0, 38.0].into())).clicked() {
                         self.install();
                     }
@@ -141,7 +127,7 @@ impl eframe::App for PatcherApp {
     }
 }
 
-fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str, minecraft_dir: &str, mixed_compatibility: bool, base: &str) -> Command {
+fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str, minecraft_dir: &str, mixed_compatibility: bool) -> Command {
     let mut command = Command::new(java);
     command
         .arg("-jar")
@@ -154,13 +140,10 @@ fn install_command(java: &std::path::Path, jar: &std::path::Path, version: &str,
     if mixed_compatibility {
         command.arg("--mixed-compatibility");
     }
-    if !base.is_empty() {
-        command.arg(format!("--{base}"));
-    }
     command
 }
 
-fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool, base: &str) -> String {
+fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool) -> String {
     let jar = match launcher_jar() {
         Ok(path) => path,
         Err(error) => return format!("Could not prepare embedded launcher: {error}"),
@@ -169,7 +152,7 @@ fn install_profile(version: &str, minecraft_dir: &str, mixed_compatibility: bool
         Ok(path) => path,
         Err(error) => return error,
     };
-    let mut command = install_command(&java, &jar, version, minecraft_dir, mixed_compatibility, base);
+    let mut command = install_command(&java, &jar, version, minecraft_dir, mixed_compatibility);
     no_window(&mut command);
     match command.output() {
         Ok(result) => {
@@ -204,7 +187,6 @@ mod tests {
             "26.3",
             "C:\\Users\\Player\\AppData\\Roaming\\.minecraft",
             false,
-            "",
         );
         let arguments: Vec<_> = command.get_args().collect();
         assert_eq!(

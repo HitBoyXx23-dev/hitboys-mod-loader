@@ -6,9 +6,9 @@ Original HitBoy code may be viewed, downloaded, compiled, installed, and used fo
 
 ## Downloads
 
-- [HitBoy's Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader.exe): standalone offline launcher
-- [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe): adds HitBoy to the official Minecraft Launcher, like the Fabric installer
-- [HitBoy Mixed Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-mixed-mod-compatibility.exe)
+- [HitBoy's Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader.exe): standalone offline launcher for **HitBoy mods**
+- [HitBoy's Mixed Compatible Mod Loader](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-mixed-mod-compatibility.exe): standalone offline launcher for HitBoy mods **plus Fabric, NeoForge, and Forge mods**
+- [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe): adds either loader to the official Minecraft Launcher, like the Fabric installer
 - [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe): ports Forge mods to NeoForge (26.3), checking every API it uses
 - [HitBoy Mod Loader API](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader-api.jar) (for mod developers)
 
@@ -20,15 +20,22 @@ starts Minecraft with a dedicated patch JAR, loads native mod JARs, and
 provides a small stable API in `com.hitboy.loader`. The title screen shows
 `Minecraft <version>/HitBoy's Mod Loader` whenever HitBoy is running, even with
 no mods installed. The game window's title bar starts with
-**HitBoy's Mod Loader** (or **HitBoy's Mixed Compatible Mod Loader** in mixed
-mode, plus "+ Fabric"/"+ NeoForge"/"+ Forge" on those loaders).
+**HitBoy's Mod Loader** (or **HitBoy's Mixed Compatible Mod Loader**).
+
+## Two loaders
+
+| Loader | Runs |
+|---|---|
+| **HitBoy's Mod Loader** | HitBoy mods only. Mods made for other loaders are skipped with a message. |
+| **HitBoy's Mixed Compatible Mod Loader** | HitBoy mods plus mods made for Fabric, NeoForge, and Forge, together in one game (see below). |
 
 ## Ways to play
 
 | Path | Use | Account |
 |---|---|---|
-| `hitboys-mod-loader.exe` | Standalone HitBoy launcher with its own game folder. | Offline username only. |
-| `hitboy-patcher.exe` | Installs a "Minecraft `<version>`/HitBoy's Mod Loader" installation into `.minecraft`. | Whatever account the official Minecraft Launcher is signed in with. |
+| `hitboys-mod-loader.exe` | Standalone HitBoy's Mod Loader with its own game folder. | Offline username only. |
+| `hitboy-mixed-mod-compatibility.exe` | Standalone HitBoy's Mixed Compatible Mod Loader (same game folder). | Offline username only. |
+| `hitboy-patcher.exe` | Installs "Minecraft `<version>`/HitBoy's Mod Loader" (or, with the mixed option, "Minecraft `<version>`/HitBoy's Mixed Compatible Mod Loader") into `.minecraft`. | Whatever account the official Minecraft Launcher is signed in with. |
 
 The standalone launchers do not offer Microsoft sign-in or online play. To play
 through the official Minecraft Launcher, install a profile with the patcher.
@@ -41,29 +48,21 @@ inherited `<version>-HitBoy` version profile, an empty placeholder JAR, a
 `hitboys-mod-loader-patch-1.0.0-SNAPSHOT.jar` as a local library. See
 [OFFICIAL_PATCH.md](OFFICIAL_PATCH.md).
 
-## Fabric, NeoForge, and Forge mods (mixed compatibility)
+## Fabric, NeoForge, and Forge mods (HitBoy's Mixed Compatible Mod Loader)
 
-**HitBoy's Mixed Compatible Mod Loader** (patcher option, or
-`hitboy-mixed-mod-compatibility.exe`) runs **HitBoy, Fabric, NeoForge, and Forge
-mods in one game** on Minecraft 26.x, and the game shows HitBoy's Mixed
-Compatible Mod Loader, not NeoForge. NeoForge runs underneath for NeoForge mods;
-Fabric mods are converted and Forge mods ported when the game starts. Fabric API
-and large Forge mods are not supported there yet.
+**HitBoy's Mixed Compatible Mod Loader** runs mods made for other loaders next to
+HitBoy mods:
 
-`hitboy-mixed-mod-compatibility.exe` (or the patcher's **Mixed Compatibility**
-option) runs **Fabric mods and Fabric API next to HitBoy mods** on Minecraft
-1.21.11, 26.2, and 26.3, with no Fabric Loader installed. Tested in worlds with
-Fabric API, Sodium + Iris, and Lithium (1.21.11 and 26.3), plus FerriteCore,
-Krypton, and ImmediatelyFast (1.21.11).
+- **Minecraft 26.x:** HitBoy, Fabric, NeoForge, and Forge mods in one game. With
+  no NeoForge or Forge mods, HitBoy runs the game itself and Fabric mods get full
+  support, including Fabric API, Sodium, and Iris. With NeoForge or Forge mods,
+  NeoForge runs underneath (the game still shows HitBoy's Mixed Compatible Mod
+  Loader), Fabric mods are converted, and Forge mods are ported when the game
+  starts; Fabric API is skipped in that case.
+- **Minecraft 1.21.11:** HitBoy and Fabric mods, including Fabric API, Sodium, and Iris.
 
-The patcher's **Also install: Fabric / NeoForge / Forge** option installs the
-real loader and adds a "HitBoy's Mod Loader + Fabric" (or "+ NeoForge",
-"+ Forge") installation, so **that loader's mods run together with HitBoy
-mods** (tested on 26.3 with Jade
-and AppleSkin on NeoForge, and Xaero's Minimap and Mouse Tweaks on Forge). On 26.x the NeoForge installation also runs
-Fabric mods that do not need Fabric API, so HitBoy, NeoForge, and Fabric mods
-share one game, and port.exe converts simple Forge mods to NeoForge. See
-[MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
+port.exe converts simple Forge mods to NeoForge by hand, checking every API they
+use. See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
 
 ## Quick start
 
@@ -114,7 +113,6 @@ it switches to mixed mode from its file name.
 - Minecraft **1.8.9** and **1.12.2** are not supported: Mojang does not publish
   official mappings before 1.14.4.
 - Other Minecraft releases are blocked until they are mapped and tested.
-- Fabric mods run in mixed-compatibility mode on 1.21.11, 26.2, and 26.3
-  ([MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md)). The real Fabric Loader, NeoForge, and
-  Forge run through the patcher's Fabric, NeoForge, and Forge options.
+- HitBoy's Mod Loader runs HitBoy mods only. Fabric, NeoForge, and Forge mods need
+  HitBoy's Mixed Compatible Mod Loader ([MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md)).
 - Native mods run in the client JVM. Install only trusted JARs.
