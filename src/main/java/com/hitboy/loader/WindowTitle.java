@@ -17,6 +17,7 @@ public final class WindowTitle {
         String base = System.getProperty("hitboy.base", "");
         if (base.equalsIgnoreCase("neoforge")) return name + " + NeoForge";
         if (base.equalsIgnoreCase("forge")) return name + " + Forge";
+        if (base.equalsIgnoreCase("fabric")) return name + " + Fabric";
         return name;
     }
 

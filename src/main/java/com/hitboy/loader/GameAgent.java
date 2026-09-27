@@ -144,6 +144,10 @@ public class GameAgent {
                 if ("net/neoforged/fml/loading/moddiscovery/locators/ModsFolderLocator".equals(className)) {
                     return patchNeoForgeModsFolder(buf);
                 }
+                if ("net/fabricmc/loader/impl/util/LoaderUtil".equals(className)
+                    && "fabric".equalsIgnoreCase(System.getProperty("hitboy.base", ""))) {
+                    return skipFabricClasspathCheck(buf);
+                }
                 String dotted = className.replace('/', '.');
                 if (dotted.startsWith("net.minecraft")) {
                     try { return transformMinecraftClass(dotted, buf, loader); } catch (Exception e) { e.printStackTrace(); }
@@ -184,8 +188,9 @@ public class GameAgent {
         });
         System.out.println("HitBoy's Mod Loader transformers registered");
         String base = System.getProperty("hitboy.base", "");
-        if (base.equalsIgnoreCase("neoforge") || base.equalsIgnoreCase("forge")) {
-            // NeoForge/Forge keep their own main class; HitBoy loads its mods here, before they start.
+        if (base.equalsIgnoreCase("fabric")) shareWithFabricLoader();
+        if (base.equalsIgnoreCase("neoforge") || base.equalsIgnoreCase("forge") || base.equalsIgnoreCase("fabric")) {
+            // Fabric/NeoForge/Forge keep their own main class; HitBoy loads its mods here, before they start.
             NativeLoader.initializeForNeoForge();
         }
     }
@@ -239,6 +244,42 @@ public class GameAgent {
      * one-letter classes such as "l", so "[Ll;" crashed while applying Fabric mods' Mixins. Only object
      * types reach that check (primitives return earlier), so make the length comparison never match.
      */
+    /**
+     * Fabric Loader's class loader hides classpath JARs from game code unless they are listed as system
+     * libraries. Minecraft's classes call into HitBoy's hooks, so HitBoy's own JAR is listed there.
+     */
+    private static void shareWithFabricLoader() {
+        try {
+            String jar = java.nio.file.Paths.get(GameAgent.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toString();
+            String existing = System.getProperty("fabric.systemLibraries", "");
+            System.setProperty("fabric.systemLibraries", existing.isEmpty() ? jar : existing + java.io.File.pathSeparator + jar);
+        } catch (Exception failed) {
+            System.err.println("HitBoy could not register with Fabric Loader: " + failed);
+        }
+    }
+
+    /**
+     * HitBoy's JAR carries its own copy of the Fabric Loader API for mixed-compatibility mode. On the real
+     * Fabric Loader that copy sits after Fabric's own JAR on the classpath, so it is never used, but Fabric's
+     * startup check (LoaderUtil#verifyClasspath) refuses to start when it sees two copies. Skip that check.
+     */
+    private static byte[] skipFabricClasspathCheck(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        for (MethodNode method : node.methods) {
+            if (!method.name.equals("verifyClasspath") || !method.desc.equals("()V")) continue;
+            method.instructions.clear();
+            method.tryCatchBlocks.clear();
+            method.localVariables = null;
+            method.instructions.add(new InsnNode(Opcodes.RETURN));
+            ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+            node.accept(writer);
+            System.out.println("Fabric Loader will use its own classes ahead of HitBoy's Fabric API copy");
+            return writer.toByteArray();
+        }
+        return null;
+    }
+
     /** NeoForge's mods-folder filter also skips JARs HitBoy runs itself (see {@link NeoForgeCompat}). */
     private static byte[] patchNeoForgeModsFolder(byte[] bytes) {
         ClassNode node = new ClassNode();

@@ -12,6 +12,7 @@ needs it) in the same mods folder as your HitBoy mods.
 | NeoForge mods | Supported through the patcher's NeoForge option (runs the real NeoForge with HitBoy) |
 | Fabric + NeoForge/Forge in one game | Not yet (skipped with a log message) |
 | NeoForge + Forge in one game | Not possible (separate loaders); skipped with a log message |
+| Fabric mods on the real Fabric Loader | Supported through the patcher's Fabric option (26.x recommended) |
 | Forge mods | Supported through the patcher's Forge option (runs the real Forge with HitBoy) |
 
 ## Turning it on
@@ -51,6 +52,22 @@ NeoForge 26.3 is still in beta. On the test PC it sometimes crashed natively whi
 loading resources, **with or without HitBoy** (plain NeoForge crashed in 2 of 3
 runs), so that crash comes from NeoForge's beta rather than from HitBoy.
 
+
+## Fabric mods on the real Fabric Loader
+
+Mixed mode (above) runs Fabric mods with HitBoy's own Fabric support. The
+patcher's **Also install: Fabric** option instead installs the **real Fabric
+Loader** (newest stable build from Fabric's servers) and adds a
+**"Minecraft `<version>`/HitBoy's Mod Loader + Fabric"** installation that
+runs Fabric Loader with HitBoy attached. Use it when a Fabric mod needs
+something HitBoy's own Fabric support does not provide.
+
+- Tested on 26.3 with Fabric Loader 0.19.5, Fabric API, Lithium, and a HitBoy
+  mod, in a world.
+- On **1.21.11**, Fabric Loader renames Minecraft's classes while the game runs,
+  so HitBoy's in-game hooks (title screen, tick, HUD, keys) do not attach there
+  yet; HitBoy mods load but receive no in-game events. Use mixed mode on 1.21.11.
+- The window title shows "HitBoy's Mod Loader + Fabric" on every version.
 
 ## Forge mods
 

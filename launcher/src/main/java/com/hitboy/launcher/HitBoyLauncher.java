@@ -34,6 +34,7 @@ public class HitBoyLauncher {
     private boolean mixedCompatibility;
     private boolean neoForge;
     private boolean forge;
+    private boolean fabric;
     private String officialGameDirectory;
 
     public static void main(String[] args) {
@@ -180,6 +181,7 @@ public class HitBoyLauncher {
                 case "--mixed-compatibility": mixedCompatibility = true; break;
                 case "--neoforge": neoForge = true; break;
                 case "--forge": forge = true; break;
+                case "--fabric": fabric = true; break;
                 case "--official-game-dir": if (i+1 < args.length) officialGameDirectory = args[++i]; break;
                 default: break;
             }
@@ -207,6 +209,7 @@ public class HitBoyLauncher {
         System.out.println("  --mappings <file> Mojang mappings");
         System.out.println("  --install-official-patch  Install a <version>-HitBoy profile into .minecraft (like the Fabric installer)");
         System.out.println("  --neoforge                With --install-official-patch: also install NeoForge and run it with HitBoy");
+        System.out.println("  --fabric                  With --install-official-patch: also install Fabric Loader and run it with HitBoy");
         System.out.println("  --forge                   With --install-official-patch: also install Forge and run it with HitBoy");
         System.out.println("  --official-game-dir <dir> Official Minecraft directory (default: %APPDATA%\\.minecraft)");
         System.out.println("No args = GUI mode (persistent window)");
@@ -218,6 +221,12 @@ public class HitBoyLauncher {
                 ? com.hitboy.launcher.minecraft.OfficialPatchInstaller.defaultOfficialGameDirectory()
                 : new File(officialGameDirectory);
             File loaderJar = findLoaderJar();
+            if (fabric) {
+                com.hitboy.launcher.minecraft.FabricInstaller.install(gameDirectory, loaderJar, minecraftVersion);
+                System.out.println("Restart the official Minecraft Launcher and select the \""
+                    + com.hitboy.launcher.minecraft.FabricInstaller.profileName(minecraftVersion) + "\" installation.");
+                return;
+            }
             if (forge) {
                 com.hitboy.launcher.minecraft.ForgeInstaller.install(gameDirectory, loaderJar, minecraftVersion);
                 System.out.println("Restart the official Minecraft Launcher and select the \""

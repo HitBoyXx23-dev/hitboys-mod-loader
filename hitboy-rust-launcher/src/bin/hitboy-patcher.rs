@@ -112,11 +112,12 @@ impl eframe::App for PatcherApp {
                     ui.horizontal(|ui| {
                         ui.label("Also install:");
                         ui.radio_value(&mut self.base, "", "Nothing");
+                        ui.radio_value(&mut self.base, "fabric", "Fabric");
                         ui.radio_value(&mut self.base, "neoforge", "NeoForge");
                         ui.radio_value(&mut self.base, "forge", "Forge");
                     });
                     ui.label(egui::RichText::new(
-                        "Downloads the loader's official installer and adds a \"HitBoy's Mod Loader + NeoForge/Forge\" installation that runs its mods with HitBoy's."
+                        "Downloads the loader's official installer and adds a \"HitBoy's Mod Loader + Fabric/NeoForge/Forge\" installation that runs its mods with HitBoy's."
                     ).small().color(egui::Color32::GRAY));
                     ui.add_space(12.0);
                     let label = format!("Install {}-HitBoy", self.version);
