@@ -103,7 +103,7 @@ impl eframe::App for PatcherApp {
                     });
                     ui.checkbox(&mut self.mixed_compatibility, "Install HitBoy's Mixed Compatible Mod Loader instead");
                     ui.label(egui::RichText::new(
-                        "HitBoy's Mod Loader runs HitBoy mods only. The Mixed Compatible Mod Loader is for mods made for other loaders: on 26.x it runs HitBoy, Fabric, NeoForge, and Forge mods together (NeoForge runs underneath); on 1.21.11, HitBoy and Fabric mods. Each is its own installation."
+                        "HitBoy's Mod Loader runs HitBoy mods only. The Mixed Compatible Mod Loader is for mods made for other loaders: on 26.x and 1.21.11 it runs HitBoy, Fabric, NeoForge, and Forge mods together (NeoForge runs underneath when needed). Each is its own installation."
                     ).small().color(egui::Color32::GRAY));
                     ui.add_space(12.0);
                     let label = if self.mixed_compatibility { format!("Install {}-HitBoy-Mixed", self.version) } else { format!("Install {}-HitBoy", self.version) };

@@ -19,16 +19,18 @@ The two are separate installations (`<version>-HitBoy` and
 | Minecraft | HitBoy | Fabric | NeoForge | Forge |
 |---|---|---|---|---|
 | **26.x** | Yes | Yes | Yes | Yes (ported when the game starts) |
-| **1.21.11** | Yes | Yes | No | No |
+| **1.21.11** | Yes | Yes | Yes | Yes (ported when the game starts) |
 
-On 26.x the mixed loader picks its engine each time the game starts:
+The mixed loader picks its engine each time the game starts:
 
 - **No NeoForge or Forge mods in the folder:** HitBoy runs the game itself.
   Fabric mods get full support, including **Fabric API, Sodium, and Iris**.
 - **NeoForge or Forge mods in the folder:** NeoForge runs underneath so their mods
   can run. HitBoy converts Fabric mods into NeoForge mods and ports Forge mods to
-  NeoForge (with port.exe's converter). Fabric API cannot run inside NeoForge yet,
-  so in this case it is skipped, and so are the mods that need it, with a message.
+  NeoForge (with port.exe's converter). On 1.21.11, Fabric mods are first remapped
+  from Fabric's intermediary names to the Mojang names NeoForge uses. Fabric API
+  cannot run inside NeoForge yet, so in this case it is skipped, and so are the
+  mods that need it, with a message.
 
 Either way, the game is HitBoy's: the window title reads "HitBoy's Mixed
 Compatible Mod Loader | Minecraft 26.3", the title screen reads "HitBoy's Mixed
@@ -49,7 +51,12 @@ both the official-launcher installation and the standalone launcher.
 **26.3, HitBoy engine**, in a world: Fabric API 0.161.0 (51 modules), Sodium
 0.9.2, Iris 1.11.6, Lithium 0.26.1, and Fullbright.
 
-**1.21.11**, in a world: Fabric API 0.141.6 (49 modules), Sodium 0.8.7 + Iris
+**1.21.11, NeoForge underneath**, in a world: Fullbright (HitBoy), Lithium 0.21.4
+(Fabric), Jade and AppleSkin (NeoForge), and Mouse Tweaks 2.30 (Forge, ported at
+start). **1.21.11, HitBoy engine**, in a world: Fabric API 0.141.6, Lithium, and
+Fullbright.
+
+**1.21.11** (earlier releases), in a world: Fabric API 0.141.6 (49 modules), Sodium 0.8.7 + Iris
 1.10.7, Lithium 0.21.4, FerriteCore 8.2.0, Krypton 0.2.10, ImmediatelyFast 1.14.3.
 
 Mods must still be compatible **with each other**, exactly as on their own
@@ -80,7 +87,8 @@ NeoForge has changed is skipped and logged instead of stopping the game.
 
 ## Porting Forge mods (port.exe)
 
-port.exe converts a Forge mod JAR into a NeoForge mod JAR for Minecraft 26.3 (the
+port.exe converts a Forge mod JAR into a NeoForge mod JAR for Minecraft 26.3 or
+1.21.11 (the
 mixed loader does the same automatically). It renames the Forge APIs that have a
 NeoForge equivalent, adapts the ones that work differently (Forge's event bus
 and cancelling listeners, config screens, the environment check) through a small
@@ -104,7 +112,10 @@ Fabric API modules.
 
 ## Known limits
 
-- NeoForge and Forge mods need Minecraft 26.x.
+- NeoForge and Forge mods need Minecraft 26.x or 1.21.11.
+- Forge creates mods once Minecraft is running, NeoForge earlier. A ported Forge
+  mod that needs Minecraft in its constructor is created at NeoForge's client
+  setup instead (logged as "creating it at client setup instead").
 - Fabric API runs only when there are no NeoForge or Forge mods in the game.
 - Forge mods run only if the converter can port them.
 - With NeoForge underneath, HitBoy's own Mixin mods are skipped (NeoForge owns

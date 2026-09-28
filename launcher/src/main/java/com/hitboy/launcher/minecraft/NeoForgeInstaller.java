@@ -32,6 +32,11 @@ public final class NeoForgeInstaller {
     private NeoForgeInstaller() {
     }
 
+    /** Versions where the mixed loader can run NeoForge underneath (NeoForge and Forge mods): 26.x and 1.21.11. */
+    public static boolean supportsNeoForgeEngine(String minecraftVersion) {
+        return !minecraftVersion.startsWith("1.") || minecraftVersion.equals("1.21.11");
+    }
+
     public static String mixedVersionId(String minecraftVersion) {
         return OfficialPatchInstaller.versionId(minecraftVersion, true);
     }

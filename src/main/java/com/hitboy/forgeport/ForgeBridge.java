@@ -52,6 +52,49 @@ public final class ForgeBridge {
         return List.of();
     }
 
+    /**
+     * Called by the generated {@code @Mod} entry class instead of the mod's own constructor. Forge creates mods
+     * once Minecraft is running; NeoForge creates them earlier. A mod whose constructor fails because Minecraft
+     * is not running yet is created at NeoForge's client-setup step instead.
+     */
+    public static void construct(Class<?> modClass) {
+        try {
+            instantiate(modClass);
+        } catch (Throwable failure) {
+            if (minecraftRunning(modClass)) throw failure instanceof RuntimeException runtime ? runtime : new RuntimeException(failure);
+            System.out.println("[HitBoy port] " + modClass.getName() + " needs Minecraft to be running; creating it at client setup instead.");
+            try {
+                Class<?> setup = Class.forName("net.neoforged.fml.event.lifecycle.FMLClientSetupEvent", true, modClass.getClassLoader());
+                Consumer<Object> later = event -> instantiate(modClass);
+                Class.forName("net.neoforged.bus.api.IEventBus").getMethod("addListener", Class.class, Consumer.class)
+                    .invoke(busFor(setup), setup, later);
+            } catch (ReflectiveOperationException unavailable) {
+                throw new IllegalStateException("Could not create " + modClass.getName(), failure);
+            }
+        }
+    }
+
+    private static void instantiate(Class<?> modClass) {
+        try {
+            var constructor = modClass.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            constructor.newInstance();
+        } catch (InvocationTargetException failure) {
+            throw failure.getCause() instanceof RuntimeException runtime ? runtime : new RuntimeException(failure.getCause());
+        } catch (ReflectiveOperationException failure) {
+            throw new RuntimeException(failure);
+        }
+    }
+
+    private static boolean minecraftRunning(Class<?> modClass) {
+        try {
+            Class<?> minecraft = Class.forName("net.minecraft.client.Minecraft", false, modClass.getClassLoader());
+            return minecraft.getMethod("getInstance").invoke(null) != null;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException unavailable) {
+            return true; // not a client or not loadable: keep the original failure
+        }
+    }
+
     /** Forge's {@code MinecraftForge.registerConfigScreen(factory)}: NeoForge's IConfigScreenFactory extension point. */
     public static void registerConfigScreen(Function<Object, Object> factory) {
         try {

@@ -65,7 +65,7 @@ public final class CompatibilityCli {
         ModInspector.Inspection inspection = new ModInspector().inspect(source);
         printDescriptor(inspection.getDescriptor(), output);
         if (inspection.getDescriptor().getSourceLoader() == SourceLoader.FORGE) {
-            String target = minecraftVersion.startsWith("1.") ? "26.3" : minecraftVersion;
+            String target = minecraftVersion.startsWith("1.") && !minecraftVersion.equals("1.21.11") ? "26.3" : minecraftVersion;
             output.println("Porting this Forge mod to NeoForge (Minecraft " + target + ")...");
             ForgeToNeoForgePorter.Result result = new ForgeToNeoForgePorter().port(source, outputDirectory, target);
             result.notes().forEach(note -> output.println(" - " + note));

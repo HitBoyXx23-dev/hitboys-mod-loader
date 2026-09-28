@@ -250,12 +250,22 @@ public final class FabricRuntime implements FabricLoader {
             return;
         }
         if (found.isEmpty()) return;
-        if (!HitBoyIntermediaryRemapper.isUnobfuscated()) {
-            System.out.println("[HitBoy Fabric] Fabric mods run inside NeoForge only on Minecraft 26.x; skipping "
-                + found.size() + " Fabric mod(s).");
-            return;
+        HitBoyIntermediaryRemapper mojangNames = null;
+        if (HitBoyIntermediaryRemapper.isUnobfuscated()) {
+            mappings = HitBoyIntermediaryRemapper.identity();
+        } else {
+            // 1.21.x: Fabric mods use intermediary names, NeoForge runs Mojang's names.
+            Path proguard = Path.of(System.getProperty("libraryDirectory", "libraries"), "net", "minecraft", "client", gameVersion,
+                "client-" + gameVersion + "-mappings.txt");
+            try {
+                if (!Files.isRegularFile(proguard)) throw new IOException("Mojang's mappings were not found at " + proguard);
+                mojangNames = new HitBoyIntermediaryRemapper(gameVersion).toMojangNames(proguard);
+                mappings = mojangNames;
+            } catch (Exception exception) {
+                System.out.println("[HitBoy Fabric] Cannot run Fabric mods inside NeoForge on " + gameVersion + ": " + exception.getMessage());
+                return;
+            }
         }
-        mappings = HitBoyIntermediaryRemapper.identity();
         for (FabricMod mod : found) {
             if (!mod.isClientCompatible()) continue;
             FabricMod existing = mods.get(mod.getId());
@@ -275,17 +285,31 @@ public final class FabricRuntime implements FabricLoader {
         dropModsWithMissingDependencies();
 
         if (mods.isEmpty()) return;
+        if (mojangNames != null) {
+            Path remapped = Path.of(System.getProperty("hitboy.home", gameDirectory.toString()), "cache", "fabric-mojang", gameVersion);
+            FabricJarRemapper remapper = new FabricJarRemapper(mojangNames);
+            for (FabricMod mod : new ArrayList<>(mods.values())) {
+                try {
+                    Path output = remapped.resolve(mod.getId() + "-" + hash(mod.sourceJar) + ".jar");
+                    if (!Files.isRegularFile(output)) remapper.remap(mod, output);
+                    mod.bridgeJar = output;
+                } catch (Exception exception) {
+                    System.err.println("[HitBoy Fabric] Could not remap " + mod + " for NeoForge: " + exception);
+                    mods.remove(mod.getId());
+                }
+            }
+        }
         Path cache = Path.of(System.getProperty("hitboy.home", gameDirectory.toString()), "cache", "fabric-neoforge", gameVersion);
         Path output;
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            digest.update("hitboy-fabric-neoforge-7".getBytes(StandardCharsets.UTF_8));
+            digest.update("hitboy-fabric-neoforge-8".getBytes(StandardCharsets.UTF_8));
             for (FabricMod mod : mods.values()) digest.update(hash(mod.sourceJar).getBytes(StandardCharsets.UTF_8));
             StringBuilder name = new StringBuilder("hitboy-fabric-mods-");
             byte[] sum = digest.digest();
             for (int index = 0; index < 6; index++) name.append(String.format("%02x", sum[index]));
             output = cache.resolve(name + ".jar");
-            if (!Files.isRegularFile(output)) NeoForgeFabricBridge.convertAll(new ArrayList<>(mods.values()), output);
+            if (!Files.isRegularFile(output)) NeoForgeFabricBridge.convertAll(new ArrayList<>(mods.values()), output, mojangNames);
         } catch (Exception exception) {
             System.err.println("[HitBoy Fabric] Could not convert Fabric mods for NeoForge: " + exception);
             mods.clear();

@@ -48,7 +48,7 @@ final class NeoForgeFabricBridge {
      * does not allow two modules to share a package, which Fabric mods (Fabric API's modules above all)
      * often do. One JAR can hold several mods, so each Fabric mod is still its own NeoForge mod.
      */
-    static void convertAll(List<FabricMod> mods, Path output) throws IOException {
+    static void convertAll(List<FabricMod> mods, Path output, com.hitboy.loader.mixin.HitBoyIntermediaryRemapper names) throws IOException {
         Files.createDirectories(output.getParent());
         Path temporary = output.resolveSibling(output.getFileName() + ".tmp");
         StringBuilder accessTransformer = new StringBuilder();
@@ -60,11 +60,11 @@ final class NeoForgeFabricBridge {
                 String id = modId(mod.getId());
                 String entryClass = "com/hitboy/bridge/" + id + "/FabricEntry";
                 put(out, written, entryClass + ".class", entryClass(id, mod.getId(), entryClass));
-                try (ZipFile source = new ZipFile(mod.sourceJar.toFile())) {
+                try (ZipFile source = new ZipFile((mod.bridgeJar != null ? mod.bridgeJar : mod.sourceJar).toFile())) {
                     String accessWidener = mod.accessWidener();
                     if (accessWidener != null && source.getEntry(accessWidener) != null) {
                         accessTransformer.append("# ").append(mod.getId()).append('\n')
-                            .append(toAccessTransformer(read(source, source.getEntry(accessWidener))));
+                            .append(toAccessTransformer(read(source, source.getEntry(accessWidener)), names));
                     }
                     Set<String> mixinConfigs = new HashSet<>(mod.mixinConfigs());
                     List<String> active = new java.util.ArrayList<>();
@@ -169,6 +169,7 @@ final class NeoForgeFabricBridge {
         if (upper.equals("META-INF/MANIFEST.MF") || upper.startsWith("META-INF/JARS/")) return true;
         if (upper.equals("META-INF/NEOFORGE.MODS.TOML") || upper.equals("META-INF/MODS.TOML")) return true;
         if (upper.equals("META-INF/ACCESSTRANSFORMER.CFG") || upper.endsWith("MODULE-INFO.CLASS")) return true;
+        if (upper.equals("HITBOY.JSON")) return true; // written by HitBoy's remapper, not part of the mod
         return upper.startsWith("META-INF/") && (upper.endsWith(".SF") || upper.endsWith(".RSA") || upper.endsWith(".DSA") || upper.endsWith(".EC"));
     }
 
@@ -284,6 +285,11 @@ final class NeoForgeFabricBridge {
      * and "extendable" map to their widening forms (removing final).
      */
     static String toAccessTransformer(byte[] widener) {
+        return toAccessTransformer(widener, null);
+    }
+
+    /** {@code names}: maps intermediary names (1.21.x access wideners) to the names NeoForge runs; null on 26.x. */
+    static String toAccessTransformer(byte[] widener, com.hitboy.loader.mixin.HitBoyIntermediaryRemapper names) {
         StringBuilder out = new StringBuilder();
         boolean header = true;
         for (String raw : new String(widener, StandardCharsets.UTF_8).split("\\R")) {
@@ -298,9 +304,17 @@ final class NeoForgeFabricBridge {
             if (parts.length < 3) continue;
             String access = parts[0].startsWith("transitive-") ? parts[0].substring("transitive-".length()) : parts[0];
             String kind = parts[1];
-            String owner = parts[2].replace('/', '.');
+            String internalOwner = parts[2];
             String member = parts.length >= 5 ? parts[3] : null;
             String descriptor = parts.length >= 5 ? parts[4] : null;
+            if (names != null) {
+                if (member != null) {
+                    member = kind.equals("method") ? names.mapMethodName(internalOwner, member, descriptor) : names.mapFieldName(internalOwner, member, descriptor);
+                    descriptor = names.mapDesc(descriptor);
+                }
+                internalOwner = names.map(internalOwner);
+            }
+            String owner = internalOwner.replace('/', '.');
             String modifier;
             switch (access) {
                 case "accessible": modifier = "public"; break;

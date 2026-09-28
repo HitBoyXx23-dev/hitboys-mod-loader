@@ -122,7 +122,7 @@ public final class ForgeAutoPorter {
     private static String hash(Path jar) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-1");
         digest.update(Files.readAllBytes(jar));
-        digest.update("hitboy-forge-port-1".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        digest.update("hitboy-forge-port-2".getBytes(java.nio.charset.StandardCharsets.UTF_8));
         StringBuilder text = new StringBuilder();
         for (byte value : digest.digest()) text.append(String.format("%02x", value));
         return text.substring(0, 12);

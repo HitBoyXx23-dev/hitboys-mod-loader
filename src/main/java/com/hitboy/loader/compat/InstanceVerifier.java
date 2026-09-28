@@ -84,7 +84,7 @@ public final class InstanceVerifier {
                     // 1.21.x mixed mode runs HitBoy and Fabric mods (NeoForge/Forge mixing needs 26.x).
                     if (descriptor.getSourceLoader() == SourceLoader.FABRIC) continue;
                     System.out.println("Skipping " + descriptor.getSourceLoader() + " mod " + jarName
-                        + ": on this Minecraft version the Mixed Compatible Mod Loader runs HitBoy and Fabric mods (NeoForge and Forge mods: 26.x).");
+                        + ": on this Minecraft version the Mixed Compatible Mod Loader runs HitBoy and Fabric mods (NeoForge and Forge mods: 26.x and 1.21.11).");
                 } else if (mixed) {
                     continue; // 26.x mixed: NeoForge runs NeoForge mods, HitBoy converts Fabric mods and ports Forge mods
                 } else if (!descriptor.getSourceLoader().name().equalsIgnoreCase(base)

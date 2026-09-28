@@ -29,7 +29,7 @@ public class MinecraftLauncher {
         if (!jarFile.exists()) throw new FileNotFoundException("Minecraft client JAR is missing: " + jarFile);
         jarFile = HitBoyClientJar.prepare(jarFile);
         JsonObject verJson = JsonParser.parseString(new String(Files.readAllBytes(jsonFile.toPath()))).getAsJsonObject();
-        if (mixedCompatibility() && !version.startsWith("1.") && com.hitboy.loader.MixedEngine.needsNeoForge(mixedModsDirectory().toPath())) {
+        if (mixedCompatibility() && NeoForgeInstaller.supportsNeoForgeEngine(version) && com.hitboy.loader.MixedEngine.needsNeoForge(mixedModsDirectory().toPath())) {
             launchMixedOnNeoForge(version, username, ramMb, log, verJson, jarFile);
             return;
         }

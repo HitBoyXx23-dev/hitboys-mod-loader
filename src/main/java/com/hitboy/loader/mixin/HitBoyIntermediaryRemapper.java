@@ -54,6 +54,106 @@ public final class HitBoyIntermediaryRemapper implements IRemapper {
         loadNamed(gameVersion);
     }
 
+    /**
+     * Switches this remapper from "intermediary -> obfuscated" to "intermediary -> Mojang names", using
+     * Mojang's own mappings file (ProGuard format, "named -> obfuscated"). NeoForge runs Minecraft 1.21.x
+     * with Mojang's names, so Fabric mods for 1.21.11 are remapped this way to run inside NeoForge.
+     */
+    public HitBoyIntermediaryRemapper toMojangNames(java.nio.file.Path proguardMappings) throws IOException {
+        Map<String, String> namedByObf = new HashMap<>();
+        Map<String, String> obfByNamed = new HashMap<>();
+        List<String> lines = java.nio.file.Files.readAllLines(proguardMappings, StandardCharsets.UTF_8);
+        for (String line : lines) {
+            if (line.startsWith("#") || line.startsWith(" ") || !line.endsWith(":")) continue;
+            String[] parts = line.substring(0, line.length() - 1).split(" -> ");
+            if (parts.length != 2) continue;
+            namedByObf.put(parts[1].replace('.', '/'), parts[0].replace('.', '/'));
+            obfByNamed.put(parts[0].replace('.', '/'), parts[1].replace('.', '/'));
+        }
+        Map<String, String> mojangMembers = new HashMap<>();
+        String obfOwner = null;
+        for (String line : lines) {
+            if (line.startsWith("#")) continue;
+            if (!line.startsWith(" ")) {
+                String[] parts = line.endsWith(":") ? line.substring(0, line.length() - 1).split(" -> ") : new String[0];
+                obfOwner = parts.length == 2 ? parts[1].replace('.', '/') : null;
+                continue;
+            }
+            if (obfOwner == null) continue;
+            String[] parts = line.trim().split(" -> ");
+            if (parts.length != 2) continue;
+            String member = parts[0].replaceFirst("^\\d+:\\d+:", "");
+            int space = member.indexOf(' ');
+            if (space < 0) continue;
+            String type = member.substring(0, space);
+            String rest = member.substring(space + 1);
+            int paren = rest.indexOf('(');
+            if (paren >= 0) {
+                String name = rest.substring(0, paren);
+                String arguments = rest.substring(paren + 1, rest.indexOf(')'));
+                StringBuilder descriptor = new StringBuilder("(");
+                if (!arguments.isEmpty()) for (String argument : arguments.split(",")) descriptor.append(javaTypeDescriptor(argument, obfByNamed));
+                descriptor.append(')').append(javaTypeDescriptor(type, obfByNamed));
+                mojangMembers.put(memberKey(obfOwner, parts[1], descriptor.toString()), name);
+            } else {
+                mojangMembers.put(memberKey(obfOwner, parts[1], javaTypeDescriptor(type, obfByNamed)), rest);
+            }
+        }
+
+        // Re-key every intermediary member from its obfuscated name to its Mojang name.
+        for (Map<String, String> table : List.of(methods, fields)) {
+            boolean method = table == methods;
+            for (Map.Entry<String, String> entry : table.entrySet()) {
+                String[] key = entry.getKey().split("\u0000", -1);
+                String owner = classes.getOrDefault(key[0], key[0]);
+                String descriptor = remapDescriptor(key[2], classes);
+                String named = mojangMembers.get(memberKey(owner, entry.getValue(), descriptor));
+                if (named == null) continue;
+                entry.setValue(named);
+                (method ? methodNames : fieldNames).put(key[1], named);
+                memberNames.put(key[1], named);
+                String namedDescriptor = remapDescriptor(descriptor, namedByObf);
+                if (method) bareMethodSelectors.put(key[1], named + namedDescriptor);
+                else bareFieldSelectors.put(key[1], named + ":" + namedDescriptor);
+            }
+        }
+        for (Map.Entry<String, String> entry : classes.entrySet()) {
+            String named = namedByObf.get(entry.getValue());
+            if (named != null) entry.setValue(named);
+        }
+        reverseClasses.clear();
+        for (Map.Entry<String, String> entry : classes.entrySet()) reverseClasses.put(entry.getValue(), entry.getKey());
+        // HitBoy's own "named" tables map to obfuscated names; they do not apply here.
+        namedClasses.clear();
+        namedMethods.clear();
+        namedFields.clear();
+        namedMethodFallbacks.clear();
+        namedFieldFallbacks.clear();
+        return this;
+    }
+
+    /** "int", "java.lang.String[]", "net.minecraft.world.level.Level" -> JVM descriptor, with Minecraft classes in obfuscated names. */
+    private static String javaTypeDescriptor(String type, Map<String, String> obfByNamed) {
+        int dimensions = 0;
+        while (type.endsWith("[]")) {
+            dimensions++;
+            type = type.substring(0, type.length() - 2);
+        }
+        String descriptor = switch (type) {
+            case "void" -> "V";
+            case "boolean" -> "Z";
+            case "byte" -> "B";
+            case "char" -> "C";
+            case "short" -> "S";
+            case "int" -> "I";
+            case "long" -> "J";
+            case "float" -> "F";
+            case "double" -> "D";
+            default -> "L" + obfByNamed.getOrDefault(type.replace('.', '/'), type.replace('.', '/')) + ";";
+        };
+        return "[".repeat(dimensions) + descriptor;
+    }
+
     private void loadNamed(String gameVersion) {
         String resource = "/mappings/" + gameVersion + "-named.tiny";
         try (InputStream input = HitBoyIntermediaryRemapper.class.getResourceAsStream(resource)) {

@@ -59,7 +59,8 @@ HitBoy mods:
   NeoForge runs underneath (the game still shows HitBoy's Mixed Compatible Mod
   Loader), Fabric mods are converted, and Forge mods are ported when the game
   starts; Fabric API is skipped in that case.
-- **Minecraft 1.21.11:** HitBoy and Fabric mods, including Fabric API, Sodium, and Iris.
+- **Minecraft 1.21.11:** the same: HitBoy, Fabric, NeoForge, and Forge mods, with
+  Fabric API, Sodium, and Iris when there are no NeoForge or Forge mods.
 
 port.exe converts simple Forge mods to NeoForge by hand, checking every API they
 use. See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).

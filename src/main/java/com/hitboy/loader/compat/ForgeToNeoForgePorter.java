@@ -112,10 +112,12 @@ public final class ForgeToNeoForgePorter {
                 ported.put(entry.getKey(), convertClass(entry.getValue(), bridge, blockers));
             }
             ported.put(bridge, relocatedBridge(bridge));
+            String modEntry = bridge.substring(0, bridge.lastIndexOf('/') + 1) + "HitBoyModEntry";
+            if (addModEntry(ported, bridge, modEntry)) ownClasses.add(modEntry);
 
             Set<String> missing = new TreeSet<>();
             for (Map.Entry<String, byte[]> entry : ported.entrySet()) {
-                if (entry.getKey().equals(bridge)) continue;
+                if (entry.getKey().equals(bridge) || entry.getKey().endsWith("/HitBoyModEntry")) continue;
                 check(entry.getKey(), entry.getValue(), api, ownClasses, missing);
                 checkListeners(entry.getValue(), missing);
             }
@@ -235,6 +237,45 @@ public final class ForgeToNeoForgePorter {
             }
             annotation.values = kept.isEmpty() ? null : kept;
         }
+    }
+
+    /**
+     * Moves the mod's {@code @Mod} annotation to a generated entry class whose constructor calls the bridge's
+     * {@code construct}, which creates the real mod class (now, or at client setup when Minecraft is not
+     * running yet; see ForgeBridge#construct).
+     */
+    private static boolean addModEntry(Map<String, byte[]> ported, String bridge, String entryName) {
+        for (Map.Entry<String, byte[]> entry : ported.entrySet()) {
+            ClassNode node = new ClassNode();
+            new ClassReader(entry.getValue()).accept(node, 0);
+            if (node.visibleAnnotations == null) continue;
+            AnnotationNode mod = null;
+            for (AnnotationNode annotation : node.visibleAnnotations) if (annotation.desc.equals("Lnet/neoforged/fml/common/Mod;")) mod = annotation;
+            if (mod == null) continue;
+            boolean noArgumentConstructor = node.methods.stream().anyMatch(m -> m.name.equals("<init>") && m.desc.equals("()V"));
+            if (!noArgumentConstructor) return false; // other constructor shapes are checked by the API check
+            node.visibleAnnotations.remove(mod);
+            ClassWriter original = new ClassWriter(0);
+            node.accept(original);
+            entry.setValue(original.toByteArray());
+
+            ClassWriter writer = new ClassWriter(0);
+            writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER, entryName, null, "java/lang/Object", null);
+            mod.accept(writer.visitAnnotation(mod.desc, true));
+            var constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+            constructor.visitCode();
+            constructor.visitVarInsn(Opcodes.ALOAD, 0);
+            constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+            constructor.visitLdcInsn(org.objectweb.asm.Type.getObjectType(node.name));
+            constructor.visitMethodInsn(Opcodes.INVOKESTATIC, bridge, "construct", "(Ljava/lang/Class;)V", false);
+            constructor.visitInsn(Opcodes.RETURN);
+            constructor.visitMaxs(1, 1);
+            constructor.visitEnd();
+            writer.visitEnd();
+            ported.put(entryName, writer.toByteArray());
+            return true;
+        }
+        return false;
     }
 
     /** The bridge goes into the mod's own package (from its @Mod class), so two ported mods never share a package. */

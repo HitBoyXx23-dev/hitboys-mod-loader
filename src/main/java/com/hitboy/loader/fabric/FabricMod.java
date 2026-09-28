@@ -24,6 +24,8 @@ final class FabricMod implements ModContainer, ModMetadata {
     Path runtimeJar;
     /** The class loader the mod's classes live in: NeoForge's game class loader when bridged, else the system one. */
     ClassLoader classLoader;
+    /** 1.21.11 inside NeoForge: the mod remapped to Mojang's names, which the bridge converts. */
+    Path bridgeJar;
     private FileSystem fileSystem;
 
     FabricMod(JsonObject json, Path sourceJar) {
