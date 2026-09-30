@@ -199,11 +199,11 @@ public class MinecraftLauncher {
         cmd.add(neo.get("mainClass").getAsString());
         cmd.addAll(Arrays.asList("--username", username, "--version", neoForgeId, "--gameDir", base.getAbsolutePath(),
             "--assetsDir", new File(base, "assets").getAbsolutePath(), "--assetIndex", vanilla.getAsJsonObject("assetIndex").get("id").getAsString(),
-            "--uuid", uuid, "--accessToken", "0", "--userType", "mojang", "--versionType", "release"));
+            "--uuid", uuid, "--accessToken", "0", "--userType", "mojang", "--versionType", "HitBoy's Mod Loader"));
         for (JsonElement argument : neo.getAsJsonObject("arguments").getAsJsonArray("game")) {
             if (argument.isJsonPrimitive()) cmd.add(argument.getAsString());
         }
-        log.accept("Launching HitBoy's Mixed Compatible Mod Loader (NeoForge " + neoForgeId + " underneath)...");
+        log.accept("Launching HitBoy's Mixed Compatible Mod Loader...");
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.directory(base);
         pb.redirectErrorStream(true);

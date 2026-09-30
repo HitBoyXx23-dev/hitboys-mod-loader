@@ -296,11 +296,9 @@ public class GameAgent {
         new ClassReader(bytes).accept(node, 0);
         for (MethodNode method : node.methods) {
             for (AbstractInsnNode instruction : method.instructions.toArray()) {
-                if (instruction instanceof FieldInsnNode field && field.getOpcode() == Opcodes.PUTSTATIC
-                    && field.desc.equals("Ljava/util/List;") && (field.name.equals("brandings") || field.name.equals("brandingsNoMC"))) {
-                    method.instructions.insertBefore(field, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding",
+                if (instruction.getOpcode() == Opcodes.ARETURN && method.desc.endsWith(")Ljava/util/List;"))
+                    method.instructions.insertBefore(instruction, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding",
                         "rebrand", "(Ljava/util/List;)Ljava/util/List;", false));
-                }
                 if (instruction.getOpcode() == Opcodes.ARETURN && method.desc.equals("()Ljava/lang/String;")
                     && (method.name.equals("getClientBranding") || method.name.equals("getServerBranding"))) {
                     method.instructions.insertBefore(instruction, new MethodInsnNode(Opcodes.INVOKESTATIC, "com/hitboy/loader/HitBoyBranding",
@@ -310,7 +308,7 @@ public class GameAgent {
         }
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
-        System.out.println("NeoForge branding replaced with " + HitBoyBranding.MIXED_NAME);
+        System.out.println("Underlying loader branding replaced with " + HitBoyBranding.MIXED_NAME);
         return writer.toByteArray();
     }
 

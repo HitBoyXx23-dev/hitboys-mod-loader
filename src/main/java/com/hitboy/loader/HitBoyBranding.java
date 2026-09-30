@@ -25,8 +25,29 @@ public final class HitBoyBranding {
     public static List<String> rebrand(List<String> lines) {
         if (lines == null || !mixedEngine()) return lines;
         List<String> branded = new ArrayList<>();
-        for (String line : lines) branded.add(line == null ? null : line.replaceAll("(?i)neoforge\\s+[^\\s(]+", MIXED_NAME));
+        boolean named = false;
+        for (String line : lines) {
+            if (line == null) {
+                branded.add(null);
+                continue;
+            }
+            if (line.toLowerCase(Locale.ROOT).contains("neoforge")) {
+                if (!named) {
+                    branded.add(MIXED_NAME + loadedCount(line));
+                    named = true;
+                }
+                continue;
+            }
+            branded.add(line.replaceAll("(?i)\\s*[- ]?beta(?:\\s*\\d+)?", ""));
+        }
+        if (!named) branded.add(0, MIXED_NAME);
         return branded;
+    }
+
+    private static String loadedCount(String line) {
+        int start = line.indexOf('(');
+        int end = line.lastIndexOf(')');
+        return start >= 0 && end > start ? " " + line.substring(start, end + 1) : "";
     }
 
     /** NeoForge's client/server brand ("neoforge"). */
