@@ -18,20 +18,20 @@ The two are separate installations (`<version>-HitBoy` and
 
 | Minecraft | HitBoy | Fabric | NeoForge | Forge |
 |---|---|---|---|---|
-| **26.x** | Yes | Yes | Yes | Yes (ported when the game starts) |
-| **1.21.11** | Yes | Yes | Yes | Yes (ported when the game starts) |
+| **26.x** | Yes | Yes | Yes | Yes (automatic compatibility) |
+| **1.21.11** | Yes | Yes | Yes | Yes (automatic compatibility) |
 
 The mixed loader picks its engine each time the game starts:
 
 - **No NeoForge or Forge mods in the folder:** HitBoy runs the game itself.
   Fabric mods get full support, including **Fabric API, Sodium, and Iris**.
 - **NeoForge or Forge mods in the folder:** NeoForge runs underneath so their mods
-  can run. HitBoy converts Fabric mods into NeoForge mods and ports Forge mods to
-  NeoForge (with port.exe's converter). On 1.21.11, Fabric mods are first remapped
-  from Fabric's intermediary names to the Mojang names NeoForge uses. Fabric API
-  cannot run inside NeoForge yet. If the requested combination contains Fabric
-  API or a Forge mod that cannot be converted, launch stops and reports the exact
-  incompatible JAR instead of starting with missing mods.
+  can run. HitBoy attaches Fabric and Forge mods through its automatic compatibility
+  layer. On 1.21.11, Fabric mods are first remapped
+  from Fabric's intermediary names to the Mojang names NeoForge uses. This happens
+  automatically after Launch; users keep the original JARs together and never run
+  port.exe. If a Forge API has no safe compatibility mapping, launch stops and
+  reports the exact incompatible JAR instead of starting with missing mods.
 
 Either way, the game is HitBoy's: the window title reads "HitBoy's Mixed
 Compatible Mod Loader | Minecraft 26.3", the title screen reads "HitBoy's Mixed
@@ -117,7 +117,9 @@ Fabric API modules.
 - Forge creates mods once Minecraft is running, NeoForge earlier. A ported Forge
   mod that needs Minecraft in its constructor is created at NeoForge's client
   setup instead (logged as "creating it at client setup instead").
-- Fabric API runs only when there are no NeoForge or Forge mods in the game.
+- Fabric API is automatically bridged when NeoForge or Forge mods are present.
+  Conflicting registry and resource-pack Mixins are removed because the base
+  engine already provides those operations.
 - Forge mods run only if the converter can port them.
 - Mixed mode stops before Minecraft opens when a requested mod cannot be prepared;
   it does not silently start with only some of the selected mods.

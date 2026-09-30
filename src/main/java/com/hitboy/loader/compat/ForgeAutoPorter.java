@@ -49,14 +49,14 @@ public final class ForgeAutoPorter {
                 }
                 current.add(folder.toAbsolutePath().normalize());
                 folders.add("hitboy_forge_" + folders.size() + "%%" + ported.toAbsolutePath());
-                System.out.println("[HitBoy Forge] Running Forge mod " + jar.getFileName() + " (ported to NeoForge)");
+                System.out.println("[HitBoy Forge] Running original Forge mod " + jar.getFileName() + " through HitBoy compatibility");
             } catch (Exception exception) {
                 failures.add(jar.getFileName() + ": " + exception.getMessage());
             }
         }
         cleanCache(cache, current);
         if (!failures.isEmpty()) {
-            throw new IllegalStateException("Mixed compatibility could not prepare every Forge mod:" + System.lineSeparator()
+            throw new IllegalStateException("Mixed compatibility could not adapt every Forge mod:" + System.lineSeparator()
                 + String.join(System.lineSeparator(), failures));
         }
         if (folders.isEmpty()) return;

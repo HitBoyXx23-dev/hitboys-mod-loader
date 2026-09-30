@@ -54,14 +54,21 @@ inherited `<version>-HitBoy` version profile, an empty placeholder JAR, a
 **HitBoy's Mixed Compatible Mod Loader** runs mods made for other loaders next to
 HitBoy mods:
 
+Put the original JARs together in `native_mods` and press Launch. Users do not
+run port.exe first and the supplied JARs are never overwritten. HitBoy prepares
+private runtime compatibility data automatically and invalidates it when a JAR
+changes.
+
 - **Minecraft 26.x:** HitBoy, Fabric, NeoForge, and Forge mods in one game. With
   no NeoForge or Forge mods, HitBoy runs the game itself and Fabric mods get full
   support, including Fabric API, Sodium, and Iris. With NeoForge or Forge mods,
   NeoForge runs underneath (the game still shows HitBoy's Mixed Compatible Mod
-  Loader), Fabric mods are converted, and Forge mods are ported when the game
-  starts. If any original JAR cannot be prepared, launch stops with the exact
+  Loader), Fabric and Forge mods are attached through HitBoy's automatic
+  compatibility layer when the game starts. If any original JAR cannot be
+  prepared, launch stops with the exact
   reason instead of silently running only part of the requested mod set. Fabric
-  API cannot currently be combined with NeoForge or Forge mods.
+  API modules use the same automatic bridge, with known duplicate registry and
+  resource-pack patches removed when the underlying engine already provides them.
 - **Minecraft 1.21.11:** the same: HitBoy, Fabric, NeoForge, and Forge mods, with
   Fabric API, Sodium, and Iris when there are no NeoForge or Forge mods.
 

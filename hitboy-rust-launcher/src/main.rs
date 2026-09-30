@@ -133,7 +133,7 @@ impl HitBoysModLoaderApp {
             game_dir: default_game_dir(),
             mods: vec![],
             log: if mixed_compatibility {
-                "HitBoy's Mixed Compatibility Mod Loader v1.0.0\nReady. Native and converted mods are managed together.\n".to_string()
+                "HitBoy's Mixed Compatibility Mod Loader v1.0.0\nReady. Put original HitBoy, Fabric, Forge, and NeoForge JARs in native_mods. No manual porting is required.\n".to_string()
             } else {
                 "HitBoy's Mod Loader v1.0.0\nReady. Put HitBoy mods in native_mods; nothing is installed automatically.\n".to_string()
             },
@@ -229,7 +229,7 @@ impl eframe::App for HitBoysModLoaderApp {
                             ui.vertical(|ui| {
                                 ui.label(egui::RichText::new("Ready to launch").size(20.0).strong().color(egui::Color32::WHITE));
                                 let description = if self.mixed_compatibility {
-                                    "Mixed compatibility launcher • port-first validation • HitBoy runtime"
+                                    "One folder for HitBoy, Fabric, Forge, and NeoForge mods"
                                 } else {
                                     "Standalone offline launcher • HitBoy patch JAR • Java runtime"
                                 };
