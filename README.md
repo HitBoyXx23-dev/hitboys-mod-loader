@@ -11,6 +11,7 @@ Original HitBoy code may be viewed, downloaded, compiled, installed, and used fo
 - [HitBoy Profile Patcher](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboy-patcher.exe): adds either loader to the official Minecraft Launcher, like the Fabric installer
 - [HitBoy Mod Porter](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/port.exe): ports Forge mods to NeoForge (26.3), checking every API it uses
 - [HitBoy Mod Loader API](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/hitboys-mod-loader-api.jar) (for mod developers)
+- [Meteor Client HitBoy Edition for Minecraft 1.21.11](https://github.com/HitBoyXx23-dev/hitboys-mod-loader/releases/latest/download/meteor-client-hitboy-edition-1.21.11-86.jar)
 
 Running a server? The server plugin loaders now live in their own repository:
 [HitBoyXx23-dev/hitboys-plugin-loader](https://github.com/HitBoyXx23-dev/hitboys-plugin-loader).
