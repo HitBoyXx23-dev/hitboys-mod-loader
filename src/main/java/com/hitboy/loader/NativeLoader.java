@@ -113,9 +113,11 @@ public class NativeLoader {
             }
             modManager.scanAndLoadMods(modsDir);
         } catch (Throwable failure) {
-            // Mod problems must never stop Minecraft from opening; report them and start without the failed mods.
             System.err.println("HitBoy could not load mods from " + modsDir + ": " + failure);
             failure.printStackTrace();
+            if (com.hitboy.loader.fabric.FabricRuntime.enabled()) {
+                throw failure instanceof Exception exception ? exception : new RuntimeException(failure);
+            }
         }
         String gameVersion = System.getProperty("hitboy.game-version", "1.21.11");
         String gameDir = gameDirectory;

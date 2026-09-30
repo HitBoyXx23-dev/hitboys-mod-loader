@@ -23,6 +23,7 @@ public final class ForgeAutoPorter {
 
     public static void prepare(Path modsDirectory, String minecraftVersion) {
         List<Path> forgeJars = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
         try (DirectoryStream<Path> jars = Files.newDirectoryStream(modsDirectory, "*.jar")) {
             for (Path jar : jars) if (!ActiveMods.isSkipped(jar) && isForgeOnly(jar)) forgeJars.add(jar);
         } catch (IOException exception) {
@@ -41,9 +42,7 @@ public final class ForgeAutoPorter {
                 if (ported == null) {
                     ForgeToNeoForgePorter.Result result = porter.port(jar, folder, minecraftVersion);
                     if (!result.ported()) {
-                        System.out.println("[HitBoy Forge] Skipping " + jar.getFileName() + ": it cannot be ported to NeoForge automatically:");
-                        result.blockers().stream().limit(5).forEach(blocker -> System.out.println("[HitBoy Forge]   - " + blocker));
-                        if (result.blockers().size() > 5) System.out.println("[HitBoy Forge]   ... and " + (result.blockers().size() - 5) + " more (run port.exe for the full list)");
+                        failures.add(jar.getFileName() + ": " + String.join("; ", result.blockers()));
                         continue;
                     }
                     ported = result.output();
@@ -52,10 +51,14 @@ public final class ForgeAutoPorter {
                 folders.add("hitboy_forge_" + folders.size() + "%%" + ported.toAbsolutePath());
                 System.out.println("[HitBoy Forge] Running Forge mod " + jar.getFileName() + " (ported to NeoForge)");
             } catch (Exception exception) {
-                System.err.println("[HitBoy Forge] Could not port " + jar.getFileName() + ": " + exception);
+                failures.add(jar.getFileName() + ": " + exception.getMessage());
             }
         }
         cleanCache(cache, current);
+        if (!failures.isEmpty()) {
+            throw new IllegalStateException("Mixed compatibility could not prepare every Forge mod:" + System.lineSeparator()
+                + String.join(System.lineSeparator(), failures));
+        }
         if (folders.isEmpty()) return;
         String existing = System.getProperty("fml.modFolders", "");
         String added = String.join(java.io.File.pathSeparator, folders);

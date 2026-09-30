@@ -29,8 +29,9 @@ The mixed loader picks its engine each time the game starts:
   can run. HitBoy converts Fabric mods into NeoForge mods and ports Forge mods to
   NeoForge (with port.exe's converter). On 1.21.11, Fabric mods are first remapped
   from Fabric's intermediary names to the Mojang names NeoForge uses. Fabric API
-  cannot run inside NeoForge yet, so in this case it is skipped, and so are the
-  mods that need it, with a message.
+  cannot run inside NeoForge yet. If the requested combination contains Fabric
+  API or a Forge mod that cannot be converted, launch stops and reports the exact
+  incompatible JAR instead of starting with missing mods.
 
 Either way, the game is HitBoy's: the window title reads "HitBoy's Mixed
 Compatible Mod Loader | Minecraft 26.3", the title screen reads "HitBoy's Mixed
@@ -82,8 +83,8 @@ with Sodium 0.9.2. Use the versions a mod's own page lists.
 
 With NeoForge underneath, HitBoy instead writes the Fabric mods into one NeoForge
 mod JAR (`.hitboys-modloader\cache\fabric-neoforge`), each with its own mod entry,
-Mixins, and access widener as an access transformer. A Fabric hook whose target
-NeoForge has changed is skipped and logged instead of stopping the game.
+Mixins, and access widener as an access transformer. The original JARs remain
+unchanged.
 
 ## Porting Forge mods (port.exe)
 
@@ -118,6 +119,8 @@ Fabric API modules.
   setup instead (logged as "creating it at client setup instead").
 - Fabric API runs only when there are no NeoForge or Forge mods in the game.
 - Forge mods run only if the converter can port them.
+- Mixed mode stops before Minecraft opens when a requested mod cannot be prepared;
+  it does not silently start with only some of the selected mods.
 - With NeoForge underneath, HitBoy's own Mixin mods are skipped (NeoForge owns
   Mixin there). On 26.x, HitBoy Mixin mods built for 1.21.11 (such as Meteor
   Client HitBoy Edition) are skipped either way.

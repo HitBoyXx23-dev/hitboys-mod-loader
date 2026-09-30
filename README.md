@@ -59,7 +59,9 @@ HitBoy mods:
   support, including Fabric API, Sodium, and Iris. With NeoForge or Forge mods,
   NeoForge runs underneath (the game still shows HitBoy's Mixed Compatible Mod
   Loader), Fabric mods are converted, and Forge mods are ported when the game
-  starts; Fabric API is skipped in that case.
+  starts. If any original JAR cannot be prepared, launch stops with the exact
+  reason instead of silently running only part of the requested mod set. Fabric
+  API cannot currently be combined with NeoForge or Forge mods.
 - **Minecraft 1.21.11:** the same: HitBoy, Fabric, NeoForge, and Forge mods, with
   Fabric API, Sodium, and Iris when there are no NeoForge or Forge mods.
 

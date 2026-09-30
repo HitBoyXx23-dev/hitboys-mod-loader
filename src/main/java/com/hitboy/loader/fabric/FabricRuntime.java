@@ -274,12 +274,10 @@ public final class FabricRuntime implements FabricLoader {
         }
         // Fabric API patches parts of Minecraft that NeoForge also changes, so it cannot run inside NeoForge
         // yet; it is left out, and so are the mods that need it (with a message, see below).
-        for (FabricMod mod : new ArrayList<>(mods.values())) {
-            if (isFabricApiModule(mod.getId())) mods.remove(mod.getId());
-        }
-        if (found.stream().anyMatch(mod -> isFabricApiModule(mod.getId()))) {
-            System.out.println("[HitBoy Fabric] Fabric API is skipped: this game has NeoForge or Forge mods, so NeoForge runs underneath, and Fabric API"
-                + " does not run inside NeoForge yet. Without NeoForge and Forge mods, HitBoy runs Fabric API itself.");
+        List<FabricMod> fabricApiMods = found.stream().filter(mod -> isFabricApiModule(mod.getId())).toList();
+        if (!fabricApiMods.isEmpty()) {
+            throw new IllegalStateException("Mixed compatibility cannot safely combine Fabric API with NeoForge or Forge yet. "
+                + "The original jars were not changed. Unsupported Fabric API modules: " + fabricApiMods);
         }
         insideNeoForge = true;
         dropModsWithMissingDependencies();
