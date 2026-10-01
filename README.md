@@ -75,6 +75,11 @@ changes.
 port.exe converts simple Forge mods to NeoForge by hand, checking every API they
 use. See [MIXED_COMPATIBILITY.md](MIXED_COMPATIBILITY.md).
 
+The packaged 1.21.11 mixed launcher was live-tested through the title screen with
+four original JARs together: HitBoy Fullbright 1.0.0, Fabric Lithium 0.21.4,
+NeoForge AppleSkin 3.0.8, and Forge Mouse Tweaks 2.30. All four initialized and
+appeared under their correct loader in HitBoy's Mods screen.
+
 ## Quick start
 
 1. Start `hitboys-mod-loader.exe`. It uses the newest Java on the PC and

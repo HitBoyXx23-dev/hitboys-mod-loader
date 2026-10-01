@@ -52,10 +52,13 @@ both the official-launcher installation and the standalone launcher.
 **26.3, HitBoy engine**, in a world: Fabric API 0.161.0 (51 modules), Sodium
 0.9.2, Iris 1.11.6, Lithium 0.26.1, and Fullbright.
 
-**1.21.11, NeoForge underneath**, in a world: Fullbright (HitBoy), Lithium 0.21.4
-(Fabric), Jade and AppleSkin (NeoForge), and Mouse Tweaks 2.30 (Forge, ported at
-start). **1.21.11, HitBoy engine**, in a world: Fabric API 0.141.6, Lithium, and
-Fullbright.
+**1.21.11, mixed runtime**, live-tested through the title screen with four
+original JARs in one folder: Fullbright 1.0.0 (HitBoy), Lithium 0.21.4 (Fabric),
+AppleSkin 3.0.8 (NeoForge), and Mouse Tweaks 2.30 (Forge). All four initialized,
+resources loaded, Mouse Tweaks created its configuration, and HitBoy's Mods
+screen listed each mod under the correct loader. The window title and client
+brand remained HitBoy's. **1.21.11, HitBoy engine**, in a world: Fabric API
+0.141.6, Lithium, and Fullbright.
 
 **1.21.11** (earlier releases), in a world: Fabric API 0.141.6 (49 modules), Sodium 0.8.7 + Iris
 1.10.7, Lithium 0.21.4, FerriteCore 8.2.0, Krypton 0.2.10, ImmediatelyFast 1.14.3.
